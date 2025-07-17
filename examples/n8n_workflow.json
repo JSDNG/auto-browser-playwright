@@ -1,0 +1,277 @@
+{
+    "name": "Amazon Product Scraper",
+    "nodes": [
+        {
+            "parameters": {},
+            "id": "4e2b4e6f-3f3e-4e3e-8e3e-3e3e3e3e3e3e",
+            "name": "Start",
+            "type": "n8n-nodes-base.start",
+            "typeVersion": 1,
+            "position": [240, 240]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "url": "http://localhost:8000/automation",
+                "options": {
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "timeout": 45000
+                },
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "url",
+                            "value": "https://www.amazon.com/"
+                        },
+                        {
+                            "name": "actions",
+                            "value": [
+                                {
+                                    "type": "click",
+                                    "selector": "#twotabsearchtextbox",
+                                    "timeout": 10000
+                                },
+                                {
+                                    "type": "fill",
+                                    "selector": "#twotabsearchtextbox",
+                                    "value": "laptop",
+                                    "timeout": 10000
+                                },
+                                {
+                                    "type": "click",
+                                    "selector": "#nav-search-submit-button",
+                                    "timeout": 10000
+                                },
+                                {
+                                    "type": "wait",
+                                    "selector": "[data-component-type='s-search-result']",
+                                    "timeout": 15000
+                                },
+                                {
+                                    "type": "get_all_text",
+                                    "selector": "[data-component-type='s-search-result'] h2 a span",
+                                    "extract_name": "product_titles"
+                                },
+                                {
+                                    "type": "get_all_text",
+                                    "selector": "[data-component-type='s-search-result'] .a-price-whole",
+                                    "extract_name": "product_prices"
+                                },
+                                {
+                                    "type": "get_all_attributes",
+                                    "selector": "[data-component-type='s-search-result'] h2 a",
+                                    "attribute": "href",
+                                    "extract_name": "product_links"
+                                },
+                                {
+                                    "type": "get_all_attributes",
+                                    "selector": "[data-component-type='s-search-result'] img",
+                                    "attribute": "src",
+                                    "extract_name": "product_images"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "id": "5e2b4e6f-3f3e-4e3e-8e3e-3e3e3e3e3e3e",
+            "name": "Playwright Automation",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [460, 240]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "1234567890",
+                            "leftValue": "={{ $json.success }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equal"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                }
+            },
+            "id": "6e2b4e6f-3f3e-4e3e-8e3e-3e3e3e3e3e3e",
+            "name": "Success Check",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [680, 240]
+        },
+        {
+            "parameters": {
+                "operation": "create",
+                "resource": "database",
+                "title": "Amazon Products - {{ new Date().toISOString() }}",
+                "databaseId": "your-notion-database-id",
+                "propertiesUi": {
+                    "propertyValues": [
+                        {
+                            "key": "Title",
+                            "textValue": "={{ $json.data.product_titles[0] || 'No title' }}"
+                        },
+                        {
+                            "key": "Price",
+                            "textValue": "={{ $json.data.product_prices[0] || 'No price' }}"
+                        },
+                        {
+                            "key": "Link",
+                            "textValue": "={{ $json.data.product_links[0] || 'No link' }}"
+                        },
+                        {
+                            "key": "Image",
+                            "textValue": "={{ $json.data.product_images[0] || 'No image' }}"
+                        },
+                        {
+                            "key": "Scraped At",
+                            "dateValue": "={{ new Date().toISOString() }}"
+                        }
+                    ]
+                }
+            },
+            "id": "7e2b4e6f-3f3e-4e3e-8e3e-3e3e3e3e3e3e",
+            "name": "Save to Notion",
+            "type": "n8n-nodes-base.notion",
+            "typeVersion": 2,
+            "position": [900, 160]
+        },
+        {
+            "parameters": {
+                "operation": "sendText",
+                "chatId": "your-telegram-chat-id",
+                "text": "✅ Successfully scraped {{ $json.data.product_titles.length }} products from Amazon!\n\n🔥 Top Product:\n📝 {{ $json.data.product_titles[0] }}\n💰 {{ $json.data.product_prices[0] }}\n🔗 {{ $json.data.product_links[0] }}\n\n⏰ Scraped at: {{ new Date().toLocaleString() }}"
+            },
+            "id": "8e2b4e6f-3f3e-4e3e-8e3e-3e3e3e3e3e3e",
+            "name": "Telegram Success",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [900, 320]
+        },
+        {
+            "parameters": {
+                "operation": "sendText",
+                "chatId": "your-telegram-chat-id",
+                "text": "❌ Amazon scraping failed!\n\n🔥 Error: {{ $json.error || 'Unknown error' }}\n📝 Type: {{ $json.error_type || 'Unknown' }}\n⏰ Failed at: {{ new Date().toLocaleString() }}"
+            },
+            "id": "9e2b4e6f-3f3e-4e3e-8e3e-3e3e3e3e3e3e",
+            "name": "Telegram Error",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [900, 400]
+        },
+        {
+            "parameters": {
+                "content": "=Amazon Product Scraping Results\n\n📊 **Summary:**\n- Total Products: {{ $json.data.product_titles.length }}\n- Page: {{ $json.data.page_title }}\n- URL: {{ $json.data.page_url }}\n- Scraped: {{ new Date($json.data.extraction_timestamp * 1000).toLocaleString() }}\n- Execution Time: {{ $json.execution_time }}s\n\n📦 **Products:**\n{% for i in range($json.data.product_titles.length) %}\n**{{ i + 1 }}. {{ $json.data.product_titles[i] }}**\n- 💰 Price: {{ $json.data.product_prices[i] || 'N/A' }}\n- 🔗 Link: {{ $json.data.product_links[i] || 'N/A' }}\n- 🖼️ Image: {{ $json.data.product_images[i] || 'N/A' }}\n\n{% endfor %}\n\n---\n*Scraped with Playwright Automation Server*",
+                "options": {}
+            },
+            "id": "ae2b4e6f-3f3e-4e3e-8e3e-3e3e3e3e3e3e",
+            "name": "Format Report",
+            "type": "n8n-nodes-base.markdown",
+            "typeVersion": 1,
+            "position": [1120, 240]
+        }
+    ],
+    "connections": {
+        "Start": {
+            "main": [
+                [
+                    {
+                        "node": "Playwright Automation",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Playwright Automation": {
+            "main": [
+                [
+                    {
+                        "node": "Success Check",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Success Check": {
+            "main": [
+                [
+                    {
+                        "node": "Save to Notion",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Telegram Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Telegram Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save to Notion": {
+            "main": [
+                [
+                    {
+                        "node": "Format Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Telegram Success": {
+            "main": [
+                [
+                    {
+                        "node": "Format Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "id": "amazon",
+            "name": "Amazon"
+        },
+        {
+            "id": "scraping",
+            "name": "Scraping"
+        },
+        {
+            "id": "playwright",
+            "name": "Playwright"
+        }
+    ],
+    "triggerCount": 1,
+    "updatedAt": "2024-01-01T00:00:00.000Z",
+    "versionId": "1"
+}

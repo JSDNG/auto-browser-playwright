@@ -1,0 +1,36 @@
+{
+    "description": "Basic usage example - Extract title from a webpage",
+    "input": {
+        "url": "https://example.com",
+        "extract": [
+            {
+                "name": "title",
+                "selector": "h1"
+            },
+            {
+                "name": "description",
+                "selector": "p"
+            }
+        ]
+    },
+    "usage": {
+        "command_line": "python -m src.cli '{\"url\": \"https://example.com\", \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'",
+        "n8n_configuration": {
+            "node_type": "Execute Command",
+            "settings": {
+                "command": "python",
+                "arguments": "-m src.cli '{{ JSON.stringify($json) }}'"
+            }
+        }
+    },
+    "expected_output": {
+        "success": true,
+        "data": {
+            "title": "Example Domain",
+            "description": "This domain is for use in illustrative examples in documents."
+        },
+        "error": null,
+        "timestamp": "2024-01-01T00:00:00Z",
+        "execution_time": 2.1
+    }
+}

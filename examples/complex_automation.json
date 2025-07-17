@@ -1,0 +1,133 @@
+{
+    "description": "Complex automation example - Form interaction and data extraction",
+    "input": {
+        "url": "https://httpbin.org/forms/post",
+        "actions": [
+            {
+                "type": "wait",
+                "selector": "form",
+                "timeout": 5000
+            },
+            {
+                "type": "fill",
+                "selector": "input[name='custname']",
+                "value": "John Doe"
+            },
+            {
+                "type": "fill",
+                "selector": "input[name='custtel']",
+                "value": "123-456-7890"
+            },
+            {
+                "type": "fill",
+                "selector": "input[name='custemail']",
+                "value": "john.doe@example.com"
+            },
+            {
+                "type": "select",
+                "selector": "select[name='size']",
+                "value": "large"
+            },
+            {
+                "type": "check",
+                "selector": "input[name='topping'][value='cheese']"
+            },
+            {
+                "type": "check",
+                "selector": "input[name='topping'][value='onion']"
+            },
+            {
+                "type": "fill",
+                "selector": "textarea[name='delivery']",
+                "value": "Please deliver to the front door"
+            }
+        ],
+        "extract": [
+            {
+                "name": "form_title",
+                "selector": "h1"
+            },
+            {
+                "name": "input_labels",
+                "selector": "label",
+                "multiple": true
+            },
+            {
+                "name": "form_action",
+                "selector": "form",
+                "attribute": "action"
+            },
+            {
+                "name": "available_toppings",
+                "selector": "input[name='topping']",
+                "attribute": "value",
+                "multiple": true
+            }
+        ],
+        "headless": true,
+        "timeout": 30000,
+        "viewport": {
+            "width": 1920,
+            "height": 1080
+        }
+    },
+    "usage": {
+        "command_line": "python -m src.cli '{\"url\": \"https://httpbin.org/forms/post\", \"actions\": [{\"type\": \"fill\", \"selector\": \"input[name=\\\"custname\\\"]\", \"value\": \"John Doe\"}], \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'",
+        "n8n_workflow": {
+            "description": "n8n workflow for form automation",
+            "nodes": [
+                {
+                    "type": "Start",
+                    "name": "Start"
+                },
+                {
+                    "type": "Function",
+                    "name": "Prepare Input",
+                    "code": "return [{ json: { url: 'https://httpbin.org/forms/post', actions: [{ type: 'fill', selector: 'input[name=\"custname\"]', value: 'John Doe' }] } }];"
+                },
+                {
+                    "type": "Execute Command",
+                    "name": "Run Automation",
+                    "settings": {
+                        "command": "python",
+                        "arguments": "-m src.cli '{{ JSON.stringify($json) }}'"
+                    }
+                },
+                {
+                    "type": "Function",
+                    "name": "Process Results",
+                    "code": "return [{ json: { result: $json } }];"
+                }
+            ]
+        }
+    },
+    "expected_output": {
+        "success": true,
+        "data": {
+            "form_title": "A simple HTML form",
+            "input_labels": [
+                "Customer name:",
+                "Telephone:",
+                "E-mail address:",
+                "Small",
+                "Medium",
+                "Large",
+                "Bacon",
+                "Cheese",
+                "Onion",
+                "Mushroom",
+                "Extra comments:"
+            ],
+            "form_action": "/post",
+            "available_toppings": ["bacon", "cheese", "onion", "mushroom"]
+        },
+        "error": null,
+        "timestamp": "2024-01-01T00:00:00Z",
+        "execution_time": 5.7
+    },
+    "notes": {
+        "performance": "This example demonstrates complex form interaction with multiple field types",
+        "security": "URL validation ensures only safe domains are accessed",
+        "error_handling": "Each action includes timeout handling and graceful error recovery"
+    }
+}

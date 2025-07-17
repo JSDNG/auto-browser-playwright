@@ -1,0 +1,210 @@
+{
+    "success_responses": {
+        "basic_navigation": {
+            "success": true,
+            "data": {
+                "title": "Example Domain"
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 2.5
+        },
+        "form_interaction": {
+            "success": true,
+            "data": {
+                "form_data": "/post"
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 3.2
+        },
+        "data_extraction": {
+            "success": true,
+            "data": {
+                "quotes": [
+                    "The world as we have created it is a process of our thinking. It cannot be changed without changing our thinking.",
+                    "It is our choices, Harry, that show what we truly are, far more than our abilities.",
+                    "There are only two ways to live your life. One is as though nothing is a miracle. The other is as though everything is a miracle."
+                ],
+                "authors": ["Albert Einstein", "J.K. Rowling", "Albert Einstein"],
+                "tags": [
+                    "change",
+                    "deep-thoughts",
+                    "thinking",
+                    "world",
+                    "abilities",
+                    "choices",
+                    "inspirational",
+                    "life",
+                    "live",
+                    "miracle",
+                    "miracles"
+                ]
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 4.1
+        },
+        "complex_workflow": {
+            "success": true,
+            "data": {
+                "form_title": "A simple HTML form",
+                "input_fields": ["custname", "custtel", "custemail"],
+                "topping_options": ["bacon", "cheese", "onion", "mushroom"]
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 5.7
+        },
+        "attribute_extraction": {
+            "success": true,
+            "data": {
+                "links": ["https://www.iana.org/domains/example"],
+                "images": [],
+                "meta_description": "Example Domain"
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 1.8
+        },
+        "empty_extraction": {
+            "success": true,
+            "data": {},
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 1.2
+        }
+    },
+    "error_responses": {
+        "invalid_url": {
+            "success": false,
+            "data": {},
+            "error": "Input validation error: Invalid URL format",
+            "error_type": "validation",
+            "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "missing_selector": {
+            "success": false,
+            "data": {},
+            "error": "Action 'click' failed on selector '#non-existent-element': Element not found: #non-existent-element",
+            "error_type": "automation",
+            "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "invalid_action": {
+            "success": false,
+            "data": {},
+            "error": "Input validation error: Invalid action type: invalid_action",
+            "error_type": "validation",
+            "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "navigation_error": {
+            "success": false,
+            "data": {},
+            "error": "Failed to navigate to https://non-existent-domain.com: net::ERR_NAME_NOT_RESOLVED",
+            "error_type": "navigation",
+            "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "timeout_error": {
+            "success": false,
+            "data": {},
+            "error": "Timeout exceeded while waiting for selector: #slow-loading-element",
+            "error_type": "timeout",
+            "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "security_error": {
+            "success": false,
+            "data": {},
+            "error": "URL contains blocked domain: localhost",
+            "error_type": "validation",
+            "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "json_parse_error": {
+            "success": false,
+            "data": {},
+            "error": "Invalid JSON input: Expecting ',' delimiter: line 1 column 15 (char 14)",
+            "error_type": "validation",
+            "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "browser_launch_error": {
+            "success": false,
+            "data": {},
+            "error": "Failed to launch browser: Browser executable not found",
+            "error_type": "system",
+            "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "unexpected_error": {
+            "success": false,
+            "data": {},
+            "error": "Unexpected error: Internal server error",
+            "error_type": "system",
+            "timestamp": "2024-01-01T00:00:00Z"
+        }
+    },
+    "performance_test_responses": {
+        "fast_execution": {
+            "success": true,
+            "data": {
+                "title": "Fast Page"
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 0.8
+        },
+        "slow_execution": {
+            "success": true,
+            "data": {
+                "title": "Slow Page"
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 8.5
+        },
+        "large_data_extraction": {
+            "success": true,
+            "data": {
+                "items": ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"]
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 6.2
+        }
+    },
+    "edge_cases": {
+        "empty_page": {
+            "success": true,
+            "data": {
+                "title": null
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 1.1
+        },
+        "special_characters": {
+            "success": true,
+            "data": {
+                "text": "Special characters: àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ"
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 2.0
+        },
+        "unicode_content": {
+            "success": true,
+            "data": {
+                "text": "Unicode content: 你好世界 🌍 مرحبا بالعالم"
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 2.3
+        },
+        "large_text": {
+            "success": true,
+            "data": {
+                "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat..."
+            },
+            "error": null,
+            "timestamp": "2024-01-01T00:00:00Z",
+            "execution_time": 3.4
+        }
+    }
+}
