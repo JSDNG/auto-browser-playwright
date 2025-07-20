@@ -12,7 +12,7 @@
         {
             "parameters": {
                 "httpMethod": "POST",
-                "url": "http://localhost:8000/automation",
+                                        "url": "http://localhost:5765/automation",
                 "options": {
                     "headers": {
                         "Content-Type": "application/json"

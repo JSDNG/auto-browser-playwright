@@ -7,7 +7,7 @@ echo "🚀 Playwright Automation Server - API Testing Examples"
 echo "======================================================"
 
 # Server URL
-SERVER_URL="http://localhost:8000"
+SERVER_URL="http://localhost:5765"
 
 # Colors for output
 RED='\033[0;31m'

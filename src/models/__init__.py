@@ -2,12 +2,11 @@
 Data models for input validation and output formatting.
 """
 
-from .input import AutomationInput, Action
-from .output import AutomationOutput, ErrorResponse
+from src.models.input import AutomationInput
+from src.models.output import AutomationOutput, ErrorResponse
 
 __all__ = [
     "AutomationInput",
-    "Action",
     "AutomationOutput", 
     "ErrorResponse"
 ] 

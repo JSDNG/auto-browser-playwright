@@ -2,115 +2,105 @@ import sys
 import json
 import time
 import asyncio
+import os
+import platform
 from typing import Dict, Any, Optional
+from pathlib import Path
 
-from pydantic import ValidationError
+# Fix path for running main.py directly
+current_dir = Path(__file__).parent
+project_root = current_dir.parent.parent
+sys.path.insert(0, str(project_root))
 
-from src.models.input import AutomationInput
+# Fix Windows event loop issue
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+from src.models.input import AutomationInput, ViewportConfig, ActionConfig, ExtractConfig
 from src.models.output import AutomationOutput, ErrorResponse, create_success_response, create_error_response
 from src.core.automation import PlaywrightAutomation
 from src.core.extractor import DataExtractor
 from src.core.actions import ActionExecutor
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def get_hardcoded_config() -> AutomationInput:
+def get_default_config() -> AutomationInput:
     """Get hardcoded automation configuration."""
-    return AutomationInput(
+    config = AutomationInput(
         url="https://www.amazon.com/",
         headless=False,
         timeout=300000,
-        viewport={"width": 1280, "height": 720},
-        wait_for_selector="body",  # Chờ body load trước
+        viewport=ViewportConfig(width=1280, height=720),
+        wait_for_selector="body",
         actions=[
-            {
-                "type": "wait",
-                "selector": "body",
-                "timeout": 300000
-            },
-            {
-                "type": "click",
-                "selector": "body > div > div.a-row.a-spacing-double-large > div.a-section > div > div > form > div > div > span > span > button",
-                "timeout": 10000
-            },
-            {
-                "type": "wait",
-                "selector": "body",
-                "timeout": 20000
-            },
-            {
-                "type": "click",
-                "selector": "#twotabsearchtextbox",
-                "timeout": 20000
-            },
-            {
-                "type": "fill",
-                "selector": "#twotabsearchtextbox",
-                "value": "t-shirt",
-                "timeout": 10000
-            },
-            {
-                "type": "click",
-                "selector": "#nav-search-submit-button",
-                "timeout": 10000
-            },
-            {
-                "type": "wait",
-                "selector": "body",
-                "timeout": 20000
-            },
-            {
-                "type": "fill",
-                "selector": "#\39 baf2e7f-b6fb-4e8d-8210-f7f3628e8070 > div > div > span > div > div > div.a-section.a-spacing-small.puis-padding-left-small.puis-padding-right-small > div.a-section.a-spacing-none.a-spacing-top-small.s-title-instructions-style > a > h2 > span",
-                "timeout": 10000
-            },
-            # {
-            #     "type": "click",
-            #     "selector": "#passwordNext > div > button > span",
-            #     "timeout": 30000
-            # },
-            # {
-            #     "type": "wait",
-            #     "selector": "body",
-            #     "timeout": 10000
-            # },
-            # # {
-            # #     "type": "click",
-            # #     "selector": "#yDmH0d > c-wiz > div > div.JYXaTc.lUWEgd > div > div.FO2vFd > div > div > button > span",
-            # #     "timeout": 10000
-            # # },
-            # # {
-            # #     "type": "wait",
-            # #     "selector": "body",
-            # #     "timeout": 5000
-            # # },
-            # # {
-            # #     "type": "click",
-            # #     "selector": "#yDmH0d > c-wiz.SSPGKf.JHVYhd > div > div > div > div > div.MFXio > button.VfPpkd-LgbsSe.ksBjEc.lKxP2d.LQeN7.MXew1e.lJTaZd > span",
-            # #     "timeout": 10000
-            # # },
-            # # {
-            # #     "type": "wait",
-            # #     "selector": "body", 
-            # #     "timeout": 3000
-            # # },
-            # # {
-            # #     "type": "click",
-            # #     "selector": "#yDmH0d > c-wiz:nth-child(10) > div > div > div > div > div > div.MFXio > button.VfPpkd-LgbsSe.ksBjEc.lKxP2d.LQeN7.MXew1e.lJTaZd > span",
-            # #     "timeout": 10000
-            # # },
-            # # {
-            # #     "type": "wait",
-            # #     "selector": "body",
-            # #     "timeout": 5000
-            # # },
-            # {
-            #     "type": "click",
-            #     "selector": "#yDmH0d > c-wiz > div > div.eEJIWe > div.UdVxgf > div > div.dWOKZe > div.sZjBXe > div > div.tB5Jxf-xl07Ob-XxIAqe-OWXEXe-oYxtQd > div:nth-child(1) > div > button",
-            #     "timeout": 10000
-            # }
+            ActionConfig(
+                type="wait",
+                selector="body",
+                timeout=300000
+            ),
+            ActionConfig(
+                type="click",
+                selector="body > div > div.a-row.a-spacing-double-large > div.a-section > div > div > form > div > div > span > span > button",
+                timeout=10000
+            ),
+            ActionConfig(
+                type="wait",
+                selector="body",
+                timeout=20000
+            ),
+            ActionConfig(
+                type="click",
+                selector="#twotabsearchtextbox",
+                timeout=20000
+            ),
+            ActionConfig(
+                type="fill",
+                selector="#twotabsearchtextbox",
+                value="t-shirt",
+                timeout=10000
+            ),
+            ActionConfig(
+                type="click",
+                selector="#nav-search-submit-button",
+                timeout=10000
+            ),
+            ActionConfig(
+                type="wait",
+                selector="body",
+                timeout=20000
+            ),
+            # Add extraction actions
+            ActionConfig(
+                type="get_text",
+                selector="h1.a-size-base.s-desktop-toolbar",
+                timeout=10000
+            )
         ],
-        extract=[]
+        extract=[
+            ExtractConfig(
+                name="search_results",
+                selector="[data-component-type='s-search-result'] h2 a span",
+                multiple=True
+            ),
+            ExtractConfig(
+                name="search_results_links",
+                selector="[data-component-type='s-search-result'] h2 a",
+                attribute="href",
+                multiple=True
+            ),
+            ExtractConfig(
+                name="search_count",
+                selector="span.a-size-base.a-color-base",
+                multiple=False
+            )
+        ]
     )
+    logger.info(f"[DEBUG] Default config URL: {config.url}, type: {type(config.url)}")
+    return config
 
 
 def output_json(response: Dict[str, Any]) -> None:
@@ -121,6 +111,7 @@ def output_json(response: Dict[str, Any]) -> None:
 async def run_automation(automation_input: AutomationInput) -> Dict[str, Any]:
     """Run the automation workflow."""
     start_time = time.time()
+    automation = None
     
     try:
         # Initialize automation engine
@@ -138,16 +129,14 @@ async def run_automation(automation_input: AutomationInput) -> Dict[str, Any]:
         
         await automation.launch()
         
-        if debug_mode:
-            print(f"[DEBUG] Browser launched successfully", file=sys.stderr)
-            print(f"[DEBUG] Navigating to {automation_input.url}", file=sys.stderr)
+        url_str = str(automation_input.url)
+        logger.info(f"Navigating to {url_str}")
+        logger.info(f"[DEBUG] URL type: {type(url_str)}, value: {repr(url_str)}")
+        await automation.navigate(url_str)
         
-        await automation.navigate(str(automation_input.url))
-        
-        if debug_mode:
-            print(f"[DEBUG] Successfully navigated to {automation_input.url}", file=sys.stderr)
-            page_title = await automation.page.title()
-            print(f"[DEBUG] Page title: {page_title}", file=sys.stderr)
+        logger.info(f"Successfully navigated to {automation_input.url}")
+        page_title = await automation.page.title()
+        logger.info(f"Page title: {page_title}")
         
         # Wait for initial selector if specified
         if automation_input.wait_for_selector:
@@ -157,7 +146,8 @@ async def run_automation(automation_input: AutomationInput) -> Dict[str, Any]:
         action_executor = None
         if automation_input.actions:
             action_executor = ActionExecutor(automation.page)
-            for action in automation_input.actions:
+            for i, action in enumerate(automation_input.actions):
+                logger.info(f"Executing action {i+1}/{len(automation_input.actions)}: {action.type}")
                 await action_executor.execute(action)
         
         # Extract data
@@ -172,6 +162,7 @@ async def run_automation(automation_input: AutomationInput) -> Dict[str, Any]:
         if automation_input.extract:
             data_extractor = DataExtractor(automation.page)
             for extract_item in automation_input.extract:
+                logger.info(f"Extracting data: {extract_item.name}")
                 result = await data_extractor.extract(extract_item)
                 extracted_data[extract_item.name] = result
         
@@ -210,25 +201,26 @@ async def run_automation(automation_input: AutomationInput) -> Dict[str, Any]:
         execution_time = time.time() - start_time
         
         # Create success response
-        response = create_success_response(
-            data=extracted_data,
-            execution_time=execution_time
-        )
+        response = {
+            "success": True,
+            "data": extracted_data,
+            "execution_time": execution_time,
+            "page_title": page_title,
+            "final_url": automation.page.url
+        }
         
-        return response.model_dump()
+        # Keep automation instance for potential future use
+        return response, automation
         
     except Exception as e:
-        debug_mode = True
-        
-        if debug_mode:
-            print(f"[ERROR] Automation failed: {e}", file=sys.stderr)
+        logger.error(f"Automation failed: {e}")
         
         # Ensure browser is closed on error
-        try:
-            await automation.detach()
-        except Exception as close_error:
-            if debug_mode:
-                print(f"[ERROR] Failed to detach browser: {close_error}", file=sys.stderr)
+        if automation:
+            try:
+                await automation.close()
+            except Exception as close_error:
+                logger.error(f"Failed to close browser: {close_error}")
         
         # Create error response
         error_type = "automation"
@@ -245,12 +237,14 @@ async def run_automation(automation_input: AutomationInput) -> Dict[str, Any]:
         elif "connection" in error_str.lower():
             error_type = "connection"
         
-        response = create_error_response(
-            error=error_str,
-            error_type=error_type
-        )
+        response = {
+            "success": False,
+            "error": error_str,
+            "error_type": error_type,
+            "execution_time": time.time() - start_time
+        }
         
-        return response.model_dump()
+        return response, None
 
 
 def main() -> None:
@@ -259,14 +253,14 @@ def main() -> None:
         print("Starting automation with hardcoded configuration...", file=sys.stderr)
         
         # Get hardcoded configuration
-        automation_input = get_hardcoded_config()
+        automation_input = get_default_config()
         
         print(f"Target URL: {automation_input.url}", file=sys.stderr)
         print(f"Headless mode: {automation_input.headless}", file=sys.stderr)
         
         # Run automation
         try:
-            response = asyncio.run(run_automation(automation_input))
+            response, automation = asyncio.run(run_automation(automation_input))
             output_json(response)
             
             # Exit with appropriate code
@@ -292,6 +286,13 @@ def main() -> None:
             error_type="interrupted"
         )
         output_json(error_response.model_dump())
+        # Exit gracefully to avoid cleanup errors
+        try:
+            # Give a moment for any pending operations to complete
+            import time
+            time.sleep(0.1)
+        except:
+            pass
         sys.exit(1)
     
     except Exception as e:
