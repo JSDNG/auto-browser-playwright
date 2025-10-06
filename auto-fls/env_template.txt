@@ -1,0 +1,49 @@
+# ===========================================
+# AUTO FLASH SALE - ENVIRONMENT CONFIGURATION
+# Copy this file to .env and modify as needed
+# ===========================================
+
+# HideMyAcc Configuration
+HMA_API_BASE=http://127.0.0.1:2268
+HMA_API_KEY=your-hma-api-key-here
+
+# Server Configuration
+SERVER_HOST=0.0.0.0
+SERVER_PORT=5001
+DEBUG=True
+
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FILE=logs/auto_fls.log
+
+# Security
+SECRET_KEY=auto-fls-secret-key-2024-change-in-production
+JWT_SECRET=jwt-secret-key-2024
+
+# External Services
+N8N_WEBHOOK_URL=https://your-n8n.io/webhook/flash-sale-report
+PUBLIC_BASE_URL=https://abc123.ngrok.io
+
+# Rate Limiting
+RATE_LIMIT_PER_MINUTE=60
+RATE_LIMIT_BURST=10
+
+# Profile Management
+DEFAULT_PROFILE_TIMEOUT=1800
+MAX_CONCURRENT_PROFILES=5
+
+# Profile Configuration
+DEFAULT_PROFILE_ID=6898c8f7effa52a76ed48168
+BACKUP_PROFILE_ID=689c58b2effa52a76e7b76be
+
+# Database (Optional - for future use)
+DATABASE_URL=sqlite:///auto_fls.db
+
+# ===========================================
+# DEVELOPMENT SETTINGS
+# ===========================================
+# Uncomment for production:
+# DEBUG=False
+# LOG_LEVEL=WARNING
+# SECRET_KEY=your-production-secret-key
+# ===========================================

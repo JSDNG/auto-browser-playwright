@@ -1,0 +1,27 @@
+# Prometheus configuration for Auto Flash Sale monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Auto Flash Sale API
+  - job_name: 'auto-fls-api'
+    static_configs:
+      - targets: ['auto-fls:5001']
+    metrics_path: '/api/v1/metrics'
+    scrape_interval: 30s
+    
+  # HMA Server (if exposed)
+  - job_name: 'hma-server'
+    static_configs:
+      - targets: ['host.docker.internal:2268']
+    scrape_interval: 60s
+    
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

@@ -1,0 +1,27 @@
+# Ngrok configuration for Auto Flash Sale
+version: "2"
+authtoken: YOUR_NGROK_AUTHTOKEN_HERE
+
+tunnels:
+  auto-fls-api:
+    addr: auto-fls:5001
+    proto: http
+    subdomain: auto-fls-api  # Optional: use custom subdomain
+    inspect: true
+    bind_tls: true
+    
+  # Optional: Expose HMA API (if needed)
+  hma-api:
+    addr: host.docker.internal:2268
+    proto: http
+    subdomain: hma-api
+    inspect: true
+    bind_tls: true
+
+# Logging
+log_level: info
+log_format: logfmt
+log: /var/log/ngrok.log
+
+# Web interface
+web_addr: 0.0.0.0:4040
