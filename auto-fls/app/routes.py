@@ -101,8 +101,35 @@ def start_flash_sale():
         logger.error(f"Failed to start Flash Sale: {e}")
         return jsonify(format_error_response(str(e), "START_FLASH_SALE_ERROR")), 500
 
+@api_bp.route('/stop-profile', methods=['POST'])
+@limiter.limit("10 per minute")
+def stop_profile():
+    """Stop HideMyAcc profile"""
+    try:
+        # Get request data
+        data = request.get_json() or {}
+        profile_id = data.get('profile_id', config.DEFAULT_PROFILE_ID)
+        
+        # Validate profile ID
+        if not validate_profile_id(profile_id):
+            return jsonify(format_error_response("Invalid profile ID format", "INVALID_PROFILE_ID")), 400
+        
+        # Stop profile
+        result = hma_client.stop_profile(profile_id)
+        
+        if result.get('success'):
+            logger.info(f"Profile {profile_id} stopped successfully")
+            return jsonify(format_success_response({"profile_id": profile_id}, "Profile stopped successfully"))
+        else:
+            logger.warning(f"Failed to stop profile {profile_id}: {result}")
+            return jsonify(format_error_response("Failed to stop profile", "STOP_PROFILE_ERROR")), 500
+        
+    except Exception as e:
+        logger.error(f"Failed to stop profile: {e}")
+        return jsonify(format_error_response(str(e), "STOP_PROFILE_ERROR")), 500
+
 # ===========================================
-# SIMPLIFIED ROUTES - ONLY 2 MAIN ENDPOINTS
+# SIMPLIFIED ROUTES - 3 MAIN ENDPOINTS
 # ===========================================
 
 # Error handlers
