@@ -99,9 +99,10 @@ pip install -r requirements.txt
 print_status "Installing development dependencies..."
 pip install -r requirements-dev.txt
 
-# Install Playwright browsers
-print_status "Installing Playwright browsers..."
-playwright install chromium
+# Install Playwright browsers (Firefox and WebKit only, excluding Chromium)
+print_status "Installing Playwright browsers (Firefox and WebKit only)..."
+playwright install firefox webkit
+print_success "Playwright browsers installed (Firefox and WebKit)"
 
 # Create necessary directories
 print_status "Creating necessary directories..."

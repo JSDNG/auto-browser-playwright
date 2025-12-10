@@ -49,9 +49,6 @@ COPY --chown=playwright:playwright requirements.txt requirements-dev.txt ./
 # Install Python dependencies
 RUN pip install --user --no-cache-dir -r requirements.txt
 
-# Install Playwright and browsers
-RUN python -m playwright install chromium
-
 # Copy application code
 COPY --chown=playwright:playwright . .
 

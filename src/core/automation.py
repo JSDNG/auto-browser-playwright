@@ -8,7 +8,7 @@ if platform.system() == "Windows":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 class PlaywrightAutomation:
-    def __init__(self, headless: bool = True, timeout: int = 30000, viewport: ViewportConfig = None):
+    def __init__(self, headless: bool = False, timeout: int = 30000, viewport: ViewportConfig = None):
         self.headless = headless
         self.timeout = timeout
         self.viewport = viewport or ViewportConfig()
@@ -18,24 +18,59 @@ class PlaywrightAutomation:
         self.page = None
 
     async def launch(self):
-        """Launch browser"""
+        """Launch browser using system Chrome"""
         self.playwright = await async_playwright().start()
+        # Use system Chrome instead of Playwright's browser
         self.browser = await self.playwright.chromium.launch(
-            headless=self.headless,
+            channel="chrome",
+            headless=False,
             args=[
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-            ] if self.headless else [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-            ]
-        )
+            "--disable-blink-features=AutomationControlled", # TẮT CỜ ROBOT (Quan trọng nhất)
+            "--no-sandbox",
+            "--disable-infobars"
+        ])
         
         self.context = await self.browser.new_context(
             viewport={'width': self.viewport.width, 'height': self.viewport.height}
         )
         self.page = await self.context.new_page()
+
+    async def connect_over_cdp(self, cdp_endpoint: str = "http://localhost:9222"):
+        """
+        Connect to an existing Chrome instance via CDP (Chrome DevTools Protocol)
+        
+        Args:
+            cdp_endpoint: CDP endpoint URL (default: http://localhost:9222)
+                          Format: http://localhost:PORT hoặc ws://localhost:PORT
+        
+        Yêu cầu:
+            Chrome phải được khởi động với flag: --remote-debugging-port=9222
+            Ví dụ: /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+        """
+        self.playwright = await async_playwright().start()
+        
+        # Connect to existing Chrome via CDP
+        # Playwright tự động detect nếu là http:// thì sẽ convert sang ws://
+        self.browser = await self.playwright.chromium.connect_over_cdp(cdp_endpoint)
+        
+        # Lấy context hiện có hoặc tạo mới
+        contexts = self.browser.contexts
+        if contexts:
+            # Sử dụng context đầu tiên đã có sẵn
+            self.context = contexts[0]
+            pages = self.context.pages
+            if pages:
+                # Sử dụng page đầu tiên đã có sẵn
+                self.page = pages[0]
+            else:
+                # Tạo page mới trong context hiện có
+                self.page = await self.context.new_page()
+        else:
+            # Tạo context và page mới
+            self.context = await self.browser.new_context(
+                viewport={'width': self.viewport.width, 'height': self.viewport.height}
+            )
+            self.page = await self.context.new_page()
 
     async def navigate(self, url: str):
         """Navigate to URL"""

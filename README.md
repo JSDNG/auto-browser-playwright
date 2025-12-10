@@ -20,7 +20,7 @@ This server provides HTTP endpoints for n8n workflows to perform web automation 
 ## Requirements
 
 -   Python 3.11+
--   Playwright with Chromium browser
+-   Chrome browser installed on your system (uses system Chrome, not Playwright's browser)
 -   FastAPI and dependencies
 
 ## Quick Start
@@ -35,8 +35,7 @@ cd playwright
 # Install dependencies
 pip install -r requirements.txt
 
-# Install Playwright browsers
-playwright install chromium
+# No need to install browsers - uses your system Chrome!
 ```
 
 ### 2. Start Server
@@ -366,8 +365,10 @@ pip list | grep fastapi
 **Browser Issues**
 
 ```bash
-# Reinstall browsers
-playwright install chromium
+# Make sure Chrome is installed on your system
+# On macOS: Chrome should be in Applications
+# On Windows: Chrome should be in Program Files
+# On Linux: Install Google Chrome from official repository
 
 # Check system resources
 free -h
