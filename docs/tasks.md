@@ -223,7 +223,7 @@ src/
 
 ```bash
 # Start server
-python src/app/server_playwright.py
+python3 src/app/server_playwright.py
 
 # Test browser opening với automation
 curl -X POST http://localhost:8000/automation \

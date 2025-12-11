@@ -8,7 +8,7 @@ Hướng dẫn sử dụng:
    Windows: "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
 
 2. Chạy script này:
-   python src/app/cdp_connection.py
+   python3 src/app/cdp_connection.py
 """
 import asyncio
 import sys

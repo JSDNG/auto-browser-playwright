@@ -471,7 +471,7 @@ pip install -r requirements.txt
 playwright install chromium
 
 # Start server
-python src/app/server_playwright.py
+python3 src/app/server_playwright.py
 
 # Server accessible at: http://localhost:5765
 # API docs at: http://localhost:5765/docs

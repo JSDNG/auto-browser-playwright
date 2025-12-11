@@ -36,7 +36,7 @@ command_exists() {
 
 # Function to get Python version
 get_python_version() {
-    python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'
+    python3 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'
 }
 
 # Function to check Python version
@@ -55,9 +55,11 @@ check_python_version() {
 print_status "Starting Playwright Backend Service setup..."
 
 # Check if Python is installed
-if ! command_exists python; then
-    print_error "Python is not installed. Please install Python 3.11+ and try again."
-    exit 1
+if ! command_exists python3; then
+    if ! command_exists python; then
+        print_error "Python 3 is not installed. Please install Python 3.11+ and try again."
+        exit 1
+    fi
 fi
 
 # Check Python version
@@ -77,7 +79,11 @@ fi
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     print_status "Creating virtual environment..."
-    python -m venv venv
+    if command_exists python3; then
+        python3 -m venv venv
+    else
+        python -m venv venv
+    fi
     print_success "Virtual environment created"
 else
     print_status "Virtual environment already exists"
@@ -163,7 +169,7 @@ print_success "Setup completed successfully!"
 echo
 echo "Next steps:"
 echo "1. Activate virtual environment: source venv/bin/activate"
-echo "2. Test the CLI: python -m src.cli '{\"url\": \"https://example.com\", \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'"
+echo "2. Test the CLI: python3 -m src.cli '{\"url\": \"https://example.com\", \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'"
 echo "3. Run tests: make test"
 echo "4. Check code quality: make lint"
 echo

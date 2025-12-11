@@ -42,7 +42,7 @@ pip install -r requirements.txt
 
 ```bash
 # Run FastAPI server
-python src/app/server_playwright.py
+python3 src/app/server_playwright.py
 
 # Server will start on http://localhost:5765
 # API docs available at http://localhost:5765/docs

@@ -74,7 +74,7 @@ playwright/
 
 ```bash
 # Start the server
-python src/app/server_playwright.py
+python3 src/app/server_playwright.py
 
 # Server runs on http://localhost:5765
 # API docs at http://localhost:5765/docs
