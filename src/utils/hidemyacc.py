@@ -45,12 +45,16 @@ class HideMyAccManager:
         
         for path in possible_paths:
             if path.exists():
-                # Kiểm tra xem có thư mục Profiles không
+                # Kiểm tra xem có thư mục Profiles hoặc profiles không
                 profiles_path = path / "Profiles"
-                if profiles_path.exists():
+                profiles_path_lower = path / "profiles"
+                if profiles_path.exists() or profiles_path_lower.exists():
                     return path
                 # Hoặc có thể là cấu trúc khác
-                if (path / "profiles").exists() or (path / "data").exists():
+                if (path / "data").exists():
+                    return path
+                # Nếu là .hidemyacc và có thư mục profiles hoặc browser, cũng hợp lệ
+                if path.name == ".hidemyacc" and ((path / "profiles").exists() or (path / "browser").exists()):
                     return path
         
         return None
@@ -64,11 +68,13 @@ class HideMyAccManager:
             return []
         
         profiles = []
+        seen_profile_ids = set()  # Để tránh duplicate nếu profile tồn tại ở cả hai nơi
         
         # Thử các cấu trúc thư mục phổ biến
+        # Ưu tiên lowercase "profiles" trước (thường là active profiles)
         possible_profile_dirs = [
-            self.base_path / "Profiles",
-            self.base_path / "profiles",
+            self.base_path / "profiles",  # Ưu tiên lowercase
+            self.base_path / "Profiles",  # Uppercase
             self.base_path / "data" / "profiles",
         ]
         
@@ -80,13 +86,16 @@ class HideMyAccManager:
                         # Kiểm tra xem có phải là profile directory không
                         profile_path = self._get_profile_user_data(item)
                         if profile_path:
-                            profiles.append({
-                                "id": item.name,
-                                "name": item.name,
-                                "path": str(item),
-                                "user_data_dir": str(profile_path),
-                            })
-                break
+                            profile_id = item.name
+                            # Chỉ thêm nếu chưa thấy (ưu tiên profile đầu tiên tìm thấy)
+                            if profile_id not in seen_profile_ids:
+                                seen_profile_ids.add(profile_id)
+                                profiles.append({
+                                    "id": profile_id,
+                                    "name": profile_id,
+                                    "path": str(item),
+                                    "user_data_dir": str(profile_path),
+                                })
         
         return profiles
     
@@ -94,12 +103,23 @@ class HideMyAccManager:
         """
         Tìm user data directory trong profile
         HideMyAcc có thể lưu profile ở các cấu trúc khác nhau
+        
+        Lưu ý: user_data_dir là thư mục CHỨA "Default" folder, không phải chính "Default" folder
+        Ví dụ: /Users/mac/.hidemyacc/profiles/hma_xxx/ (chứa Default/)
         """
-        # Các cấu trúc có thể:
+        # Kiểm tra nếu profile_dir có chứa "Default" subdirectory
+        # Đây là cấu trúc phổ biến của HideMyAcc
+        default_path = profile_dir / "Default"
+        if default_path.exists() and default_path.is_dir():
+            # Kiểm tra xem Default có chứa Chrome profile files không
+            if (default_path / "Preferences").exists() or (default_path / "Local Storage").exists():
+                # user_data_dir là parent (profile_dir), không phải Default folder
+                return profile_dir
+        
+        # Các cấu trúc khác có thể:
         possible_structures = [
             profile_dir / "User Data",
             profile_dir / "user_data",
-            profile_dir / "Default",
             profile_dir,  # Có thể chính thư mục đó
         ]
         
@@ -114,11 +134,35 @@ class HideMyAccManager:
         return None
     
     def get_profile_by_id(self, profile_id: str) -> Optional[Dict[str, str]]:
-        """Lấy thông tin profile theo ID"""
+        """
+        Lấy thông tin profile theo ID
+        
+        Hỗ trợ các format:
+        - Full name: "hma_6898af88effa52a76ecbe4ec"
+        - ID only: "6898af88effa52a76ecbe4ec"
+        - Name match: exact match với name/id
+        """
         profiles = self.find_profiles()
+        
+        # Normalize profile_id - remove "hma_" prefix nếu có
+        normalized_id = profile_id
+        if profile_id.startswith("hma_"):
+            normalized_id = profile_id[4:]  # Remove "hma_" prefix
+        
         for profile in profiles:
+            profile_name = profile["id"] or profile["name"]
+            # Check exact match
             if profile["id"] == profile_id or profile["name"] == profile_id:
                 return profile
+            # Check normalized match (without hma_ prefix)
+            if profile_name.startswith("hma_"):
+                profile_id_part = profile_name[4:]
+                if profile_id_part == normalized_id or profile_id_part == profile_id:
+                    return profile
+            # Check if profile name ends with the ID
+            if profile_name.endswith(normalized_id) or profile_name.endswith(profile_id):
+                return profile
+        
         return None
     
     def list_profiles(self) -> None:
