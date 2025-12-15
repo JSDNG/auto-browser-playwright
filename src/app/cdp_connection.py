@@ -22,7 +22,7 @@ from src.core.automation import PlaywrightAutomation
 
 
 async def connect_to_chrome_via_cdp():
-    """Kết nối với Chrome đang chạy qua CDP và thu thập dữ liệu Etsy"""
+    """Kết nối với Chrome đang chạy qua CDP và kiểm tra is_delivered"""
 
     print("=" * 60)
     print("Kết nối Playwright với Chrome qua CDP")
@@ -30,32 +30,6 @@ async def connect_to_chrome_via_cdp():
     print()
 
     automation = PlaywrightAutomation()
-    captured_data = []
-
-    # Hàm xử lý response từ Etsy API
-    async def handle_etsy(response):
-        """Bắt và xử lý response từ Etsy API"""
-        try:
-            # Lọc các API endpoint quan trọng của Etsy
-            if ("bespoke.etsy.com" in response.url or
-                "/api/" in response.url or
-                "listing" in response.url) and response.status == 200:
-
-                # Chỉ xử lý JSON responses
-                content_type = response.headers.get("content-type", "")
-                if "application/json" in content_type:
-                    try:
-                        json_data = await response.json()
-                        captured_data.append({
-                            "url": response.url,
-                            "status": response.status,
-                            "data": json_data
-                        })
-                        print(f"✓ Đã bắt API: {response.url[:80]}...")
-                    except Exception as e:
-                        print(f"⚠ Không parse được JSON từ {response.url[:50]}...: {e}")
-        except Exception as e:
-            pass  # Bỏ qua lỗi để không làm gián đoạn flow
 
     try:
         # Kết nối với Chrome đang chạy qua CDP
@@ -64,46 +38,46 @@ async def connect_to_chrome_via_cdp():
         print("✓ Đã kết nối thành công!")
         print()
 
-        # Hiển thị thông tin
-        print(f"Browser: {automation.browser}")
-        print(f"Context: {automation.context}")
-        print(f"Page URL hiện tại: {automation.page.url}")
-        print()
-
-        # Thiết lập listener để bắt network responses
-        print("Đang thiết lập network interception...")
-        automation.page.on("response", handle_etsy)
-        print("✓ Network interception đã sẵn sàng!")
-        print()
-
-        # Điều hướng đến URL mới
-        url = "https://www.etsy.com/listing/1382196280/custom-boat-tote-bag-canvas-tote-bag?ref=hp_editors_picks_primary-3&logging_key=1e4a37ab2e6157035f7997723d8d8b03643ba35a%3A1382196280"
+        # Điều hướng đến URL
+        url = "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
         print(f"Đang điều hướng đến {url}...")
         await automation.navigate(url)
         print(f"✓ Đã điều hướng thành công!")
-        print(f"Page title: {await automation.page.title()}")
-        print()
-
-        # Chờ để bắt các API responses
-        print("Đang chờ và thu thập dữ liệu từ API responses...")
-        await asyncio.sleep(5)
-
-        # Hiển thị kết quả
-        print()
+        
+        # Chờ trang load hoàn toàn
+        print("Đang chờ trang load hoàn toàn...")
+        await asyncio.sleep(2)
+        
+        # Lấy text content của body
+        body_text = await automation.page.evaluate("() => document.body.innerText")
+        body_text_lower = body_text.lower() if body_text else ""
+        
+        # Kiểm tra điều kiện delivered
+        required_phrases = ["Your item was delivered", "Latest Update", "Delivered"]
+        found_phrases = []
+        missing_phrases = []
+        
+        for phrase in required_phrases:
+            if phrase.lower() in body_text_lower:
+                found_phrases.append(phrase)
+            else:
+                missing_phrases.append(phrase)
+        
+        # Kiểm tra nếu cả 3 cụm từ đều có
+        is_delivered = len(found_phrases) == len(required_phrases)
+        
+        # Print kết quả
         print("=" * 60)
-        print(f"Đã bắt được {len(captured_data)} API responses")
+        print("Kiểm tra trạng thái delivered:")
         print("=" * 60)
-        if captured_data:
-            for i, item in enumerate(captured_data, 1):
-                print(f"\n[{i}] URL: {item['url']}")
-                print(f"    Status: {item['status']}")
-                print(f"    Data keys: {list(item['data'].keys()) if isinstance(item['data'], dict) else 'Not a dict'}")
-        else:
-            print("\n⚠ Không bắt được API response nào. Etsy có thể đã thay đổi cấu trúc API.")
+        print(f"is_delivered = {str(is_delivered).lower()}")
+        if found_phrases:
+            print(f"✓ Tìm thấy ({len(found_phrases)}/{len(required_phrases)}): {', '.join(found_phrases)}")
+        if missing_phrases:
+            print(f"✗ Thiếu ({len(missing_phrases)}/{len(required_phrases)}): {', '.join(missing_phrases)}")
         print()
         
         # Lưu ý: KHÔNG đóng browser vì đây là Chrome của bạn
-        print()
         print("⚠️  Lưu ý: Browser sẽ KHÔNG bị đóng vì đây là Chrome của bạn")
         print("   Chỉ detach khỏi Playwright...")
         await automation.detach()
