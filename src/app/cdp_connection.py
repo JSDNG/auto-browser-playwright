@@ -12,6 +12,7 @@ Hướng dẫn sử dụng:
 """
 import asyncio
 import sys
+import logging
 from pathlib import Path
 
 # Add project root to path
@@ -20,40 +21,55 @@ sys.path.insert(0, str(project_root))
 
 from src.core.automation import PlaywrightAutomation
 
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-async def connect_to_chrome_via_cdp():
-    """Kết nối với Chrome đang chạy qua CDP và kiểm tra is_delivered"""
 
-    print("=" * 60)
-    print("Kết nối Playwright với Chrome qua CDP")
-    print("=" * 60)
-    print()
+async def connect_to_chrome_via_cdp(
+    url: str = "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9400150105794041827256",
+    cdp_endpoint: str = "http://localhost:9222",
+    wait_time: int = 2,
+    required_phrases: list = None
+) -> dict:
+    """
+    Kết nối với Chrome đang chạy qua CDP và kiểm tra is_delivered
+    
+    Args:
+        url: URL cần điều hướng đến
+        cdp_endpoint: CDP endpoint (mặc định: http://localhost:9222)
+        wait_time: Thời gian chờ trang load (giây)
+        required_phrases: Danh sách cụm từ cần kiểm tra (mặc định: ["Your item was delivered", "Latest Update", "Delivered"])
+    
+    Returns:
+        dict: Kết quả với các keys:
+            - success: bool
+            - is_delivered: bool
+            - found_phrases: list
+            - missing_phrases: list
+            - body_text: str (optional)
+            - error: str (nếu có lỗi)
+    """
+    if required_phrases is None:
+        required_phrases = ["Your item was delivered", "Latest Update", "Delivered"]
 
     automation = PlaywrightAutomation()
 
     try:
         # Kết nối với Chrome đang chạy qua CDP
-        print("Đang kết nối với Chrome qua CDP tại http://localhost:9222...")
-        await automation.connect_over_cdp("http://localhost:9222")
-        print("✓ Đã kết nối thành công!")
-        print()
+        await automation.connect_over_cdp(cdp_endpoint)
 
         # Điều hướng đến URL
-        url = "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
-        print(f"Đang điều hướng đến {url}...")
         await automation.navigate(url)
-        print(f"✓ Đã điều hướng thành công!")
         
         # Chờ trang load hoàn toàn
-        print("Đang chờ trang load hoàn toàn...")
-        await asyncio.sleep(2)
+        await asyncio.sleep(wait_time)
         
         # Lấy text content của body
         body_text = await automation.page.evaluate("() => document.body.innerText")
         body_text_lower = body_text.lower() if body_text else ""
         
         # Kiểm tra điều kiện delivered
-        required_phrases = ["Your item was delivered", "Latest Update", "Delivered"]
         found_phrases = []
         missing_phrases = []
         
@@ -66,25 +82,79 @@ async def connect_to_chrome_via_cdp():
         # Kiểm tra nếu cả 3 cụm từ đều có
         is_delivered = len(found_phrases) == len(required_phrases)
         
-        # Print kết quả
+        # Lấy date: tìm trong class "delivered-status" (cha) -> tìm class "tb-date" (con) để lấy giá trị
+        delivered_date = None
+        
+        try:
+            # Tìm element cha có class "delivered-status"
+            delivered_status_element = await automation.page.query_selector(".delivered-status")
+            if delivered_status_element:
+                # Trong element cha, tìm element con có class "tb-date"
+                tb_date_element = await delivered_status_element.query_selector(".tb-date")
+                if tb_date_element:
+                    delivered_date = await tb_date_element.text_content()
+                    if delivered_date:
+                        # Loại bỏ \n và \t nếu có
+                        delivered_date = delivered_date.replace("\n", " ").replace("\t", " ").strip()
+                        # Loại bỏ khoảng trắng thừa (nhiều khoảng trắng liên tiếp)
+                        delivered_date = " ".join(delivered_date.split())
+                    else:
+                        delivered_date = None
+        except Exception as e:
+            logger.warning(f"Could not extract date from .delivered-status .tb-date: {e}")
+        
+        # Detach khỏi Playwright (không đóng browser)
+        await automation.detach()
+        
+        return {
+            "success": True,
+            "is_delivered": is_delivered,
+            "found_phrases": found_phrases,
+            "missing_phrases": missing_phrases,
+            "body_text": body_text if body_text else "",  # Trả về toàn bộ để có thể parse thời gian
+            "delivered_date": delivered_date  # Date từ .delivered-status .tb-date
+        }
+        
+    except Exception as e:
+        # Đảm bảo detach nếu có lỗi
+        try:
+            await automation.detach()
+        except:
+            pass
+        
+        return {
+            "success": False,
+            "is_delivered": False,
+            "found_phrases": [],
+            "missing_phrases": required_phrases,
+            "error": str(e)
+        }
+
+
+async def connect_to_chrome_via_cdp_cli():
+    """CLI wrapper cho hàm connect_to_chrome_via_cdp (giữ nguyên để tương thích)"""
+    print("=" * 60)
+    print("Kết nối Playwright với Chrome qua CDP")
+    print("=" * 60)
+    print()
+
+    result = await connect_to_chrome_via_cdp()
+    
+    if result["success"]:
         print("=" * 60)
         print("Kiểm tra trạng thái delivered:")
         print("=" * 60)
-        print(f"is_delivered = {str(is_delivered).lower()}")
-        if found_phrases:
-            print(f"✓ Tìm thấy ({len(found_phrases)}/{len(required_phrases)}): {', '.join(found_phrases)}")
-        if missing_phrases:
-            print(f"✗ Thiếu ({len(missing_phrases)}/{len(required_phrases)}): {', '.join(missing_phrases)}")
+        print(f"is_delivered = {str(result['is_delivered']).lower()}")
+        if result["found_phrases"]:
+            print(f"✓ Tìm thấy ({len(result['found_phrases'])}/{len(result['found_phrases']) + len(result['missing_phrases'])}): {', '.join(result['found_phrases'])}")
+        if result["missing_phrases"]:
+            print(f"✗ Thiếu ({len(result['missing_phrases'])}/{len(result['found_phrases']) + len(result['missing_phrases'])}): {', '.join(result['missing_phrases'])}")
         print()
-        
-        # Lưu ý: KHÔNG đóng browser vì đây là Chrome của bạn
         print("⚠️  Lưu ý: Browser sẽ KHÔNG bị đóng vì đây là Chrome của bạn")
         print("   Chỉ detach khỏi Playwright...")
-        await automation.detach()
         print("✓ Đã detach thành công!")
-        
-    except Exception as e:
-        print(f"❌ Lỗi: {e}")
+    else:
+        print(f"❌ Lỗi: {result.get('error', 'Unknown error')}")
         print()
         print("Kiểm tra:")
         print("1. Chrome đã khởi động với --remote-debugging-port=9222 chưa?")
@@ -93,4 +163,4 @@ async def connect_to_chrome_via_cdp():
 
 
 if __name__ == "__main__":
-    asyncio.run(connect_to_chrome_via_cdp())
+    asyncio.run(connect_to_chrome_via_cdp_cli())
