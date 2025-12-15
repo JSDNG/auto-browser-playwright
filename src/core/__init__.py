@@ -1,13 +1,10 @@
 """
-Core business logic modules for Playwright automation.
+Core business logic for CDP-based automation.
+Currently only exposes PlaywrightAutomation used by api_server/cdp_connection.
 """
 
 from src.core.automation import PlaywrightAutomation
-from src.core.extractor import DataExtractor  
-from src.core.actions import ActionExecutor
 
 __all__ = [
     "PlaywrightAutomation",
-    "DataExtractor", 
-    "ActionExecutor"
-] 
+]

@@ -17,9 +17,9 @@ The CDP setup uses a separate, temporary profile - it does NOT affect your norma
 - **Status**: Completely safe and untouched
 
 ### CDP Temporary Profile
-- **Location**: `/tmp/chrome-cdp-profile/`
+- **Location (ví dụ)**: `/tmp/chrome-cdp-profile/` (macOS/Linux) hoặc một thư mục bất kỳ bạn chỉ định với `--user-data-dir`
 - **Contains**: Empty profile created fresh for testing
-- **How to open**: Run `./scripts/start_chrome_with_cdp.sh`
+- **How to open**: Start Chrome với các flag `--user-data-dir=...` và `--remote-debugging-port=9222` như hướng dẫn trong tài liệu CDP
 - **Purpose**: Allow Playwright to connect and automate without affecting your real data
 
 ---
@@ -41,8 +41,15 @@ Your history, bookmarks, and everything will be back instantly.
 
 ### To Use CDP Chrome (for automation/testing)
 ```bash
-# Start Chrome with CDP
-./scripts/start_chrome_with_cdp.sh
+# macOS (ví dụ)
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9222 \
+  --user-data-dir=/tmp/chrome-cdp-profile
+
+# Windows (ví dụ)
+"C:\Program Files\Google\Chrome\Application\chrome.exe" ^
+  --remote-debugging-port=9222 ^
+  --user-data-dir="C:\tmp\chrome-cdp-profile"
 ```
 
 This starts a fresh, empty Chrome for testing purposes.
@@ -70,7 +77,7 @@ This starts a fresh, empty Chrome for testing purposes.
 **A:** Not recommended. It's safer to keep automation separate from your personal data.
 
 ### Q: Where is my real Chrome data?
-**A:** `~/Library/Application Support/Google/Chrome/Default/`
+**A (macOS ví dụ):** `~/Library/Application Support/Google/Chrome/Default/`
 
 ### Q: Can I delete the CDP profile?
 **A:** Yes! It's just for testing. Delete with: `rm -rf /tmp/chrome-cdp-profile`

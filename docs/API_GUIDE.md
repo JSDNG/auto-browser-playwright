@@ -5,8 +5,7 @@
 API này cho phép kết nối với Chrome đang chạy qua CDP (Chrome DevTools Protocol) để kiểm tra trạng thái delivered của các shipments từ USPS.
 
 ## Yêu cầu hệ thống
-
-- Python 3.8+
+- Python 3.11+
 - Google Chrome đã cài đặt
 - Các dependencies trong `requirements.txt`
 
@@ -21,7 +20,7 @@ pip install -r requirements.txt
 ### 2. Cài đặt Playwright browsers (nếu chưa có)
 
 ```bash
-playwright install chromium
+python -m playwright install chromium
 ```
 
 ## Khởi động Chrome với CDP
@@ -34,7 +33,7 @@ playwright install chromium
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
 ```
 
-Hoặc sử dụng script có sẵn:
+Hoặc dùng script tiện ích (tự tạo profile tách biệt):
 
 ```bash
 ./scripts/start_chrome_with_cdp.sh
@@ -58,7 +57,7 @@ chromium --remote-debugging-port=9222
 "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
 ```
 
-Hoặc sử dụng script:
+Hoặc dùng script tiện ích:
 
 ```cmd
 scripts\start_chrome_with_cdp.bat
@@ -81,27 +80,27 @@ python src/app/api_server.py
 ### Cách 2: Chạy với uvicorn (khuyến nghị)
 
 ```bash
-uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 8000
+uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5000
 ```
 
 **Các tham số:**
 - `--reload`: Tự động reload khi code thay đổi (chỉ dùng khi development)
 - `--host 0.0.0.0`: Cho phép truy cập từ các máy khác trong mạng
-- `--port 8000`: Port mặc định (có thể thay đổi)
+- `--port 5000`: Port API (có thể thay đổi, mặc định trong docs là 5000)
 
 ### Cách 3: Chạy production với uvicorn
 
 ```bash
-uvicorn src.app.api_server:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn src.app.api_server:app --host 0.0.0.0 --port 5000 --workers 4
 ```
 
 ## Truy cập API
 
 Sau khi server chạy, bạn có thể:
 
-1. **Truy cập Swagger UI** (tự động): `http://localhost:8000/docs`
-2. **Truy cập ReDoc**: `http://localhost:8000/redoc`
-3. **Health check**: `http://localhost:8000/health`
+1. **Truy cập Swagger UI** (tự động): `http://localhost:5000/docs`
+2. **Truy cập ReDoc**: `http://localhost:5000/redoc`
+3. **Health check**: `http://localhost:5000/health`
 
 ## Các Endpoints
 
@@ -123,36 +122,23 @@ Sau khi server chạy, bạn có thể:
 
 **Response:**
 ```json
-{
-    "total": 2,
-    "successful": 2,
-    "failed": 0,
-    "results": [
-        {
-            "shipment_id": "123",
-            "success": true,
-            "is_delivered": true,
-            "found_phrases": ["Your item was delivered", "Latest Update", "Delivered"],
-            "missing_phrases": [],
-            "body_text": "...",
-            "error": null
-        },
-        {
-            "shipment_id": "456",
-            "success": true,
-            "is_delivered": false,
-            "found_phrases": ["Latest Update"],
-            "missing_phrases": ["Your item was delivered", "Delivered"],
-            "body_text": "...",
-            "error": null
-        }
-    ]
-}
+[
+    {
+        "shipment_id": "123",
+        "delivered": true,
+        "delivered_at": "2025-12-13T05:01:00Z"
+    },
+    {
+        "shipment_id": "456",
+        "delivered": false,
+        "delivered_at": null
+    }
+]
 ```
 
 **Ví dụ với curl:**
 ```bash
-curl -X POST "http://localhost:8000/api/v1/cdp/auto-check-tracking" \
+curl -X POST "http://localhost:5000/api/v1/cdp/auto-check-tracking" \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -163,7 +149,7 @@ curl -X POST "http://localhost:8000/api/v1/cdp/auto-check-tracking" \
 ```
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:5000/health
 ```
 
 ## Ví dụ sử dụng với Python
@@ -185,22 +171,19 @@ shipments = [
 
 # Gọi API
 response = requests.post(
-    "http://localhost:8000/api/v1/cdp/auto-check-tracking",
-    json=shipments
+    "http://localhost:5000/api/v1/cdp/auto-check-tracking",
+    json=shipments,
+    timeout=30,
 )
+response.raise_for_status()
 
-# Xử lý kết quả
-result = response.json()
-print(f"Total: {result['total']}")
-print(f"Successful: {result['successful']}")
-print(f"Failed: {result['failed']}")
+# Xử lý kết quả (danh sách ShipmentTrackingResponse)
+results = response.json()
 
-for item in result['results']:
+for item in results:
     print(f"\nShipment ID: {item['shipment_id']}")
-    print(f"  Success: {item['success']}")
-    print(f"  Delivered: {item['is_delivered']}")
-    if item['error']:
-        print(f"  Error: {item['error']}")
+    print(f"  Delivered: {item['delivered']}")
+    print(f"  Delivered at: {item['delivered_at']}")
 ```
 
 ## Ví dụ sử dụng với PHP
@@ -218,28 +201,26 @@ $shipments = [
     ]
 ];
 
-$ch = curl_init('http://localhost:8000/api/v1/cdp/auto-check-tracking');
+$ch = curl_init('http://localhost:5000/api/v1/cdp/auto-check-tracking');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($shipments));
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 
 $response = curl_exec($ch);
+
+if ($response === false) {
+    throw new \RuntimeException('Curl error: ' . curl_error($ch));
+}
+
 curl_close($ch);
 
-$result = json_decode($response, true);
+$results = json_decode($response, true);
 
-echo "Total: " . $result['total'] . "\n";
-echo "Successful: " . $result['successful'] . "\n";
-echo "Failed: " . $result['failed'] . "\n";
-
-foreach ($result['results'] as $item) {
+foreach ($results as $item) {
     echo "\nShipment ID: " . $item['shipment_id'] . "\n";
-    echo "  Success: " . ($item['success'] ? 'true' : 'false') . "\n";
-    echo "  Delivered: " . ($item['is_delivered'] ? 'true' : 'false') . "\n";
-    if ($item['error']) {
-        echo "  Error: " . $item['error'] . "\n";
-    }
+    echo "  Delivered: " . ($item['delivered'] ? 'true' : 'false') . "\n";
+    echo "  Delivered at: " . ($item['delivered_at'] ?? 'null') . "\n";
 }
 ?>
 ```

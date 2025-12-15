@@ -1,6 +1,4 @@
-# Production dependencies for Playwright Backend Service
-playwright
-pydantic
-python-dotenv
-fastapi
-uvicorn 
+fastapi==0.124.0
+playwright==1.57.0
+pydantic==2.12.5
+uvicorn==0.38.0

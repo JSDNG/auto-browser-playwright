@@ -1,15 +1,6 @@
 """
-Utility functions for validation, formatting, and logging.
+Utility package (currently empty).
+Kept only so `src.utils` remains a valid package if imported externally.
 """
 
-from .validators import URLValidator, InputValidator
-from .formatters import OutputFormatter, DataCleaner
-from .logger import get_logger
-
-__all__ = [
-    "URLValidator",
-    "InputValidator",
-    "OutputFormatter",
-    "DataCleaner",
-    "get_logger"
-] 
+__all__: list[str] = []

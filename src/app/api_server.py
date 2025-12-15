@@ -9,12 +9,17 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 import re
 import logging
-
+import asyncio
+import platform
+from src.app.cdp_connection import connect_to_chrome_via_cdp
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.app.cdp_connection import connect_to_chrome_via_cdp
+# Fix Windows event loop issue
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -65,13 +70,13 @@ async def check_delivery_status(shipments: List[ShipmentItem]):
     [
         {
             "shipment_id": "123",
-            "delivered": true,
+            "delivered": True,
             "delivered_at": "2025-12-13T05:01:00Z"
         },
         {
             "shipment_id": "456",
-            "delivered": false,
-            "delivered_at": null
+            "delivered": False,
+            "delivered_at": None
         }
     ]
     
@@ -181,4 +186,4 @@ app.include_router(api_router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=5000)
