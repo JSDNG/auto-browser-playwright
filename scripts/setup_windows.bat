@@ -85,8 +85,8 @@ echo [SUCCESS] Setup completed.
 echo Next steps:
 echo   1. Start Chrome with CDP: scripts\start_chrome_with_cdp.bat
 echo   2. Activate venv (if not active): venv\Scripts\activate
-echo   3. Run API server: uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5000
-echo   4. Open docs: http://localhost:5000/docs
+echo   3. Run API server: uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5673
+echo   4. Open docs: http://localhost:5673/docs
 
 popd
 exit /b 0

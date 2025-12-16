@@ -85,10 +85,10 @@ Hoặc bạn cũng có thể chạy trực tiếp file:
 python src/app/api_server.py
 ```
 
-Server sẽ chạy ở `http://localhost:5000`:
+Server sẽ chạy ở `http://localhost:5673`:
 
-- **Swagger UI**: `http://localhost:5000/docs`
-- **ReDoc**: `http://localhost:5000/redoc`
+- **Swagger UI**: `http://localhost:5673/docs`
+- **ReDoc**: `http://localhost:5673/redoc`
 
 ---
 
@@ -145,7 +145,7 @@ Các rule validate, logging, và luồng xử lý được mô tả chi tiết t
   - Chạy `scripts\setup_windows.bat` để tạo venv, cài dependencies và Playwright.
   - Khởi động Chrome với CDP như hướng dẫn ở trên.
   - Kích hoạt venv: `venv\Scripts\activate`.
-  - Chạy server: `uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5000`.
+  - Chạy server: `uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5673`.
 
 ---
 

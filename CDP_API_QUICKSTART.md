@@ -15,7 +15,7 @@
 ## Bước 2: Chạy API Server
 
 ```bash
-uvicorn src.app.api_server:app --reload --host 0.0.0.0
+uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5673
 ```
 
 ## Bước 3: Gọi API
@@ -23,7 +23,7 @@ uvicorn src.app.api_server:app --reload --host 0.0.0.0
 ### Kiểm tra nhiều shipments (Batch)
 
 ```bash
-curl -X POST "http://localhost:5000/api/v1/cdp/auto-check-tracking" \
+curl -X POST "http://localhost:5673/api/v1/cdp/auto-check-tracking" \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -35,7 +35,7 @@ curl -X POST "http://localhost:5000/api/v1/cdp/auto-check-tracking" \
 
 ### Xem API Documentation
 
-Mở trình duyệt: `http://localhost:5000/docs`
+Mở trình duyệt: `http://localhost:5673/docs`
 
 ## Xem hướng dẫn chi tiết
 
