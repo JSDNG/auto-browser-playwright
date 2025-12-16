@@ -3,6 +3,10 @@ from playwright.async_api import async_playwright
 import asyncio
 import platform
 
+# Fix Windows event loop issue
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 class PlaywrightAutomation:
     def __init__(self, headless: bool = False, timeout: int = 30000, viewport: ViewportConfig = None):
         self.headless = headless

@@ -8,13 +8,13 @@ Tài liệu này hướng dẫn bạn biến `api_server.py` thành dịch vụ 
 
 - **Ứng dụng Python**: `src/app/api_server.py`
   - FastAPI + Uvicorn.
-  - Lắng nghe trên `0.0.0.0:5673` (xem cuối file):
-    - `uvicorn.run(app, host="0.0.0.0", port=5673)`
+  - Lắng nghe trên `0.0.0.0:5674` (xem cuối file):
+    - `uvicorn.run(app, host="0.0.0.0", port=5674)`
 - **Chrome**:
   - Phải khởi động với `--remote-debugging-port=9222`.
 - **Domain ngoài**:
   - Domain trỏ về IP máy/server.
-  - Reverse proxy (Nginx/Caddy/IIS/Cloudflare Tunnel/ngrok) forward request đến `http://127.0.0.1:5673`.
+  - Reverse proxy (Nginx/Caddy/IIS/Cloudflare Tunnel/ngrok) forward request đến `http://127.0.0.1:5674`.
 
 ---
 
@@ -46,12 +46,12 @@ app.include_router(api_router)
 ```python
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5673)
+    uvicorn.run(app, host="0.0.0.0", port=5674)
 ```
 
 **Lưu ý:**
 - Host `0.0.0.0` cho phép reverse proxy trên cùng máy truy cập được.
-- Port mặc định: `5673`. Bạn có thể đổi port này, nhưng nhớ cập nhật lại cấu hình reverse proxy / tunnel.
+- Port mặc định: `5674`. Bạn có thể đổi port này, nhưng nhớ cập nhật lại cấu hình reverse proxy / tunnel.
 
 ---
 
@@ -95,8 +95,8 @@ python src\app\api_server.py
 pause
 ```
 
-- Cửa sổ terminal sẽ mở và API FastAPI chạy trên `http://127.0.0.1:5673`.
-- Bạn có thể mở: `http://127.0.0.1:5673/docs` để xem Swagger UI.
+- Cửa sổ terminal sẽ mở và API FastAPI chạy trên `http://127.0.0.1:5674`.
+- Bạn có thể mở: `http://127.0.0.1:5674/docs` để xem Swagger UI.
 - Đừng đóng cửa sổ này nếu muốn API tiếp tục chạy.
 
 Nếu có lỗi, sửa cho chạy ổn **trước khi** triển khai reverse proxy / domain ngoài.
@@ -128,16 +128,16 @@ Gợi ý:
 
 ---
 
-## 5. Mở firewall cho port 5673 (nếu cần)
+## 5. Mở firewall cho port 5674 (nếu cần)
 
-Để cho reverse proxy hoặc máy khác trong mạng truy cập được, đảm bảo Windows Firewall cho phép inbound port `5673`:
+Để cho reverse proxy hoặc máy khác trong mạng truy cập được, đảm bảo Windows Firewall cho phép inbound port `5674`:
 
 1. Vào **Windows Defender Firewall with Advanced Security**.
 2. Inbound Rules → New Rule.
-3. Chọn **Port** → TCP → Specific local ports: `5673`.
+3. Chọn **Port** → TCP → Specific local ports: `5674`.
 4. Allow the connection.
 5. Áp dụng cho profile phù hợp (Domain/Private/Public).
-6. Đặt tên rule, ví dụ: `AutoBrowserAPI_5673`.
+6. Đặt tên rule, ví dụ: `AutoBrowserAPI_5674`.
 
 ---
 
@@ -149,7 +149,7 @@ Giả sử (theo môi trường thực tế của bạn):
 
 - Domain: `tracking.printfamily.com`.
 - Server Windows (hoặc máy trong LAN) có IP: `192.168.1.94`.
-- API local trên máy đó: `http://127.0.0.1:5673`.
+- API local trên máy đó: `http://127.0.0.1:5674`.
 
 #### Bước DNS
 
@@ -188,7 +188,7 @@ server {
     server_name tracking.printfamily.com;
 
     location / {
-        proxy_pass http://127.0.0.1:5673;
+        proxy_pass http://127.0.0.1:5674;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -252,9 +252,9 @@ ping tracking.printfamily.com
 
 - **Test kết nối từ local đến API backend:**
 ```bash
-curl http://127.0.0.1:5673/docs
+curl http://127.0.0.1:5674/docs
 ```
-  - Hoặc mở trình duyệt: `http://127.0.0.1:5673/docs`
+  - Hoặc mở trình duyệt: `http://127.0.0.1:5674/docs`
 
 - **Test qua nginx (từ local):**
 ```bash
@@ -272,7 +272,7 @@ curl http://localhost/docs
 
 ### 8.1. Kiểm tra nhanh
 
-- `http://127.0.0.1:5673/docs` trên server:
+- `http://127.0.0.1:5674/docs` trên server:
   - Nếu **OK** ở đây nhưng domain ngoài không được → lỗi ở phần reverse proxy / DNS.
 - Gửi request mẫu đến endpoint:
 
@@ -322,11 +322,11 @@ wait_time = 2
 ## 8. Tóm tắt quy trình triển khai
 
 1. Cài Python + tạo venv + `pip install -r requirements.txt`.
-2. Chạy API bằng `start_auto_check_tracking.bat` → truy cập `http://127.0.0.1:5673/docs` để kiểm tra.
+2. Chạy API bằng `start_auto_check_tracking.bat` → truy cập `http://127.0.0.1:5674/docs` để kiểm tra.
 3. Khởi động Chrome với `--remote-debugging-port=9222`.
-4. Mở firewall cho port `5673` (nếu cần).
+4. Mở firewall cho port `5674` (nếu cần).
 5. Cấu hình domain:
    - DNS trỏ về IP server.
-   - Reverse proxy (Nginx/IIS/Caddy) hoặc Cloudflare Tunnel/ngrok forward đến `http://127.0.0.1:5673`.
+   - Reverse proxy (Nginx/IIS/Caddy) hoặc Cloudflare Tunnel/ngrok forward đến `http://127.0.0.1:5674`.
 6. Kiểm tra `http(s)://api.yourdomain.com/docs` và test gọi API từ bên ngoài.
 

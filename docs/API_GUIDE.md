@@ -80,27 +80,27 @@ python src/app/api_server.py
 ### Cách 2: Chạy với uvicorn (khuyến nghị)
 
 ```bash
-uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5673
+uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5674
 ```
 
 **Các tham số:**
 - `--reload`: Tự động reload khi code thay đổi (chỉ dùng khi development)
 - `--host 0.0.0.0`: Cho phép truy cập từ các máy khác trong mạng
-- `--port 5673`: Port API (có thể thay đổi, mặc định trong docs là 5673)
+- `--port 5674`: Port API (có thể thay đổi, mặc định trong docs là 5674)
 
 ### Cách 3: Chạy production với uvicorn
 
 ```bash
-uvicorn src.app.api_server:app --host 0.0.0.0 --port 5673 --workers 4
+uvicorn src.app.api_server:app --host 0.0.0.0 --port 5674 --workers 4
 ```
 
 ## Truy cập API
 
 Sau khi server chạy, bạn có thể:
 
-1. **Truy cập Swagger UI** (tự động): `http://localhost:5673/docs`
-2. **Truy cập ReDoc**: `http://localhost:5673/redoc`
-3. **Health check**: `http://localhost:5673/health`
+1. **Truy cập Swagger UI** (tự động): `http://localhost:5674/docs`
+2. **Truy cập ReDoc**: `http://localhost:5674/redoc`
+3. **Health check**: `http://localhost:5674/health`
 
 ## Các Endpoints
 
@@ -138,7 +138,7 @@ Sau khi server chạy, bạn có thể:
 
 **Ví dụ với curl:**
 ```bash
-curl -X POST "http://localhost:5673/api/v1/cdp/auto-check-tracking" \
+curl -X POST "http://localhost:5674/api/v1/cdp/auto-check-tracking" \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -149,7 +149,7 @@ curl -X POST "http://localhost:5673/api/v1/cdp/auto-check-tracking" \
 ```
 
 ```bash
-curl http://localhost:5673/health
+curl http://localhost:5674/health
 ```
 
 ## Ví dụ sử dụng với Python
@@ -171,7 +171,7 @@ shipments = [
 
 # Gọi API
 response = requests.post(
-    "http://localhost:5673/api/v1/cdp/auto-check-tracking",
+    "http://localhost:5674/api/v1/cdp/auto-check-tracking",
     json=shipments,
     timeout=30,
 )
@@ -201,7 +201,7 @@ $shipments = [
     ]
 ];
 
-$ch = curl_init('http://localhost:5673/api/v1/cdp/auto-check-tracking');
+$ch = curl_init('http://localhost:5674/api/v1/cdp/auto-check-tracking');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($shipments));
