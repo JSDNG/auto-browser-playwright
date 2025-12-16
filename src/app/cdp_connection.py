@@ -1,14 +1,24 @@
 r"""
-Kết nối Playwright với Chrome đang chạy qua CDP
+Kết nối Playwright với Chrome đang chạy qua CDP.
 
-Hướng dẫn sử dụng:
+CONFIG ĐƯỢC VIẾT TRỰC TIẾP TRONG FILE (KHÔNG DÙNG .env):
+
+- DEFAULT_TRACKING_URL: URL mẫu để test nhanh CLI.
+- DEFAULT_CDP_ENDPOINT: endpoint CDP của Chrome (mặc định: http://localhost:9222).
+- DEFAULT_WAIT_TIME_SECONDS: thời gian chờ sau khi load trang.
+- DEFAULT_REQUIRED_PHRASES: các cụm text cần có để coi là "delivered".
+
+Nếu deploy ở môi trường khác (Chrome port khác, logic delivered khác),
+chỉ cần sửa các hằng số DEFAULT_* bên dưới.
+
+Hướng dẫn sử dụng CLI test nhanh:
 1. Khởi động Chrome với CDP:
    macOS: /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
    Linux: google-chrome --remote-debugging-port=9222
-   Windows: "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+   Windows: "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
 
 2. Chạy script này:
-   python3 src/app/cdp_connection.py
+   python src/app/cdp_connection.py
 """
 import asyncio
 import sys
@@ -21,25 +31,46 @@ sys.path.insert(0, str(project_root))
 
 from src.core.automation import PlaywrightAutomation
 
+# =========================
+# CẤU HÌNH CỐ ĐỊNH (INLINE)
+# =========================
+
+# URL mặc định để test CLI (không dùng trong API batch)
+DEFAULT_TRACKING_URL = "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9400150105794041827256"
+
+# CDP endpoint mặc định cho Chrome (phải phù hợp với flag --remote-debugging-port)
+DEFAULT_CDP_ENDPOINT = "http://localhost:9222"
+
+# Thời gian chờ sau khi load trang (giây)
+DEFAULT_WAIT_TIME_SECONDS = 2
+
+# Các cụm text cần có trong body để coi như "delivered"
+DEFAULT_REQUIRED_PHRASES = [
+    "Your item was delivered",
+    "Latest Update",
+    "Delivered",
+]
+
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 async def connect_to_chrome_via_cdp(
-    url: str = "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9400150105794041827256",
-    cdp_endpoint: str = "http://localhost:9222",
-    wait_time: int = 2,
+    url: str = DEFAULT_TRACKING_URL,
+    cdp_endpoint: str = DEFAULT_CDP_ENDPOINT,
+    wait_time: int = DEFAULT_WAIT_TIME_SECONDS,
     required_phrases: list = None
 ) -> dict:
     """
-    Kết nối với Chrome đang chạy qua CDP và kiểm tra is_delivered
+    Kết nối với Chrome đang chạy qua CDP và kiểm tra is_delivered.
     
     Args:
-        url: URL cần điều hướng đến
-        cdp_endpoint: CDP endpoint (mặc định: http://localhost:9222)
-        wait_time: Thời gian chờ trang load (giây)
-        required_phrases: Danh sách cụm từ cần kiểm tra (mặc định: ["Your item was delivered", "Latest Update", "Delivered"])
+        url: URL cần điều hướng đến.
+        cdp_endpoint: CDP endpoint (mặc định: DEFAULT_CDP_ENDPOINT).
+        wait_time: Thời gian chờ trang load (giây, mặc định: DEFAULT_WAIT_TIME_SECONDS).
+        required_phrases: Danh sách cụm từ cần kiểm tra (mặc định: DEFAULT_REQUIRED_PHRASES).
     
     Returns:
         dict: Kết quả với các keys:
@@ -48,10 +79,11 @@ async def connect_to_chrome_via_cdp(
             - found_phrases: list
             - missing_phrases: list
             - body_text: str (optional)
+            - delivered_date: str | None
             - error: str (nếu có lỗi)
     """
     if required_phrases is None:
-        required_phrases = ["Your item was delivered", "Latest Update", "Delivered"]
+        required_phrases = DEFAULT_REQUIRED_PHRASES.copy()
 
     automation = PlaywrightAutomation()
 
@@ -138,7 +170,13 @@ async def connect_to_chrome_via_cdp_cli():
     print("=" * 60)
     print()
 
-    result = await connect_to_chrome_via_cdp()
+    # Dùng cấu hình mặc định đã khai báo ở trên
+    result = await connect_to_chrome_via_cdp(
+        url=DEFAULT_TRACKING_URL,
+        cdp_endpoint=DEFAULT_CDP_ENDPOINT,
+        wait_time=DEFAULT_WAIT_TIME_SECONDS,
+        required_phrases=DEFAULT_REQUIRED_PHRASES.copy(),
+    )
     
     if result["success"]:
         print("=" * 60)

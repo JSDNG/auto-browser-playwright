@@ -1,5 +1,14 @@
 """
 FastAPI server để gọi CDP connection
+
+LƯU Ý CONFIG (chỉnh trực tiếp trong file này và cdp_connection.py cho dễ deploy Windows):
+- API_HOST: ip/host mà Uvicorn sẽ bind (mặc định: 0.0.0.0 để reverse proxy truy cập được)
+- API_PORT: port local để service / reverse proxy trỏ vào (mặc định: 5673)
+- CDP_ENDPOINT: endpoint CDP của Chrome (mặc định: http://localhost:9222)
+- WAIT_TIME_SECONDS: thời gian chờ sau khi load trang tracking (mặc định: 2s)
+
+Nếu bạn muốn đổi port / CDP endpoint cho môi trường khác, chỉ cần sửa các biến
+CONFIG_* bên dưới, không cần .env cho đỡ rối.
 """
 # CRITICAL: Set Windows event loop policy FIRST, before any imports
 # This must be done before uvicorn or Playwright create any event loops
@@ -26,7 +35,22 @@ import logging
 from src.app.cdp_connection import connect_to_chrome_via_cdp
 
 
-# Setup logging
+# =========================
+# CẤU HÌNH CỐ ĐỊNH (INLINE)
+# =========================
+
+# Host & port cho API (Uvicorn)
+CONFIG_API_HOST = "0.0.0.0"
+CONFIG_API_PORT = 5673
+
+# CDP endpoint cho Chrome (Chrome phải chạy với --remote-debugging-port=9222)
+CONFIG_CDP_ENDPOINT = "http://localhost:9222"
+
+# Thời gian chờ sau khi vào trang tracking (giây)
+CONFIG_WAIT_TIME_SECONDS = 2
+
+
+# Setup logging (đơn giản, log ra stdout/terminal)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -91,7 +115,7 @@ async def check_delivery_status(shipments: List[ShipmentItem]):
     Ví dụ khởi động Chrome:
     - macOS: /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=9222
     - Linux: google-chrome --remote-debugging-port=9222
-    - Windows: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222
+    - Windows: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\\temp\\chrome-debug"
     """
     if not shipments:
         raise HTTPException(
@@ -121,8 +145,9 @@ async def check_delivery_status(shipments: List[ShipmentItem]):
     try:
         logger.info(f"Received batch request with {len(shipments)} shipments")
         
-        cdp_endpoint = "http://localhost:9222"
-        wait_time = 2
+        # Dùng config cố định từ trên
+        cdp_endpoint = CONFIG_CDP_ENDPOINT
+        wait_time = CONFIG_WAIT_TIME_SECONDS
         results = []
         
         # Xử lý từng shipment tuần tự (giữ nguyên thứ tự)
@@ -191,4 +216,5 @@ app.include_router(api_router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5673)
+    # Dùng cấu hình cố định để tránh phụ thuộc environment
+    uvicorn.run(app, host=CONFIG_API_HOST, port=CONFIG_API_PORT)

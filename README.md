@@ -58,7 +58,7 @@ google-chrome --remote-debugging-port=9222
 - **Windows** (ví dụ path mặc định):
 
 ```bat
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 Giữ cửa sổ Chrome này mở trong suốt quá trình gọi API.
