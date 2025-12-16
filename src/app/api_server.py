@@ -1,24 +1,29 @@
 """
 FastAPI server để gọi CDP connection
 """
+# CRITICAL: Set Windows event loop policy FIRST, before any imports
+# This must be done before uvicorn or Playwright create any event loops
 import sys
+import asyncio
+import platform
+
+# Fix Windows event loop issue - MUST be first
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from pathlib import Path
+
+# Add project root to path BEFORE importing from src
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 from typing import Optional, List, Union
 from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel, Field
 from datetime import datetime
 import re
 import logging
-import asyncio
-import platform
 from src.app.cdp_connection import connect_to_chrome_via_cdp
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-# Fix Windows event loop issue
-if platform.system() == "Windows":
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 
 # Setup logging

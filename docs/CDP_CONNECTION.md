@@ -27,7 +27,7 @@ chromium --remote-debugging-port=9222
 
 #### Windows:
 ```bash
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 ### Bước 2: Xác nhận CDP đang chạy
