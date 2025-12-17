@@ -5,57 +5,46 @@ Hướng dẫn sử dụng:
 1. Khởi động Chrome với CDP:
    macOS: /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
    Linux: google-chrome --remote-debugging-port=9222
-   Windows: "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+   Windows: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222
 
 2. Chạy script này:
    python3 src/app/cdp_connection.py
 """
 import asyncio
+import re
 import sys
 from pathlib import Path
+from urllib.parse import quote_plus
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from src.app.heyetsy_parser import extract_heyetsy_data
+from src.app.output import save_json
 from src.core.automation import PlaywrightAutomation
+from src.models import SearchInput
 
 
 async def connect_to_chrome_via_cdp():
-    """Kết nối với Chrome đang chạy qua CDP và thu thập dữ liệu Etsy"""
+    """Kết nối với Chrome đang chạy qua CDP và lưu dữ liệu HeyEtsy."""
 
+    # Nhận từ khóa và số trang (CLI: arg1=keyword, arg2=pages)
+    keyword = sys.argv[1] if len(sys.argv) > 1 else "t-shirt"
+    pages_arg = sys.argv[2] if len(sys.argv) > 2 else None
+    try:
+        pages_val = int(pages_arg) if pages_arg is not None else 5
+    except Exception:
+        pages_val = 5
+
+    search_input = SearchInput(keyword=keyword, pages=pages_val)
+    data_output_file = Path(project_root) / "captured_data.json"
     print("=" * 60)
     print("Kết nối Playwright với Chrome qua CDP")
     print("=" * 60)
     print()
 
     automation = PlaywrightAutomation()
-    captured_data = []
-
-    # Hàm xử lý response từ Etsy API
-    async def handle_etsy(response):
-        """Bắt và xử lý response từ Etsy API"""
-        try:
-            # Lọc các API endpoint quan trọng của Etsy
-            if ("bespoke.etsy.com" in response.url or
-                "/api/" in response.url or
-                "listing" in response.url) and response.status == 200:
-
-                # Chỉ xử lý JSON responses
-                content_type = response.headers.get("content-type", "")
-                if "application/json" in content_type:
-                    try:
-                        json_data = await response.json()
-                        captured_data.append({
-                            "url": response.url,
-                            "status": response.status,
-                            "data": json_data
-                        })
-                        print(f"✓ Đã bắt API: {response.url[:80]}...")
-                    except Exception as e:
-                        print(f"⚠ Không parse được JSON từ {response.url[:50]}...: {e}")
-        except Exception as e:
-            pass  # Bỏ qua lỗi để không làm gián đoạn flow
 
     try:
         # Kết nối với Chrome đang chạy qua CDP
@@ -64,42 +53,55 @@ async def connect_to_chrome_via_cdp():
         print("✓ Đã kết nối thành công!")
         print()
 
-        # Hiển thị thông tin
-        print(f"Browser: {automation.browser}")
-        print(f"Context: {automation.context}")
-        print(f"Page URL hiện tại: {automation.page.url}")
+        # Ẩn log chi tiết context/page
         print()
 
-        # Thiết lập listener để bắt network responses
-        print("Đang thiết lập network interception...")
-        automation.page.on("response", handle_etsy)
-        print("✓ Network interception đã sẵn sàng!")
-        print()
+        all_data = {}
 
-        # Điều hướng đến URL mới
-        url = "https://www.etsy.com/listing/1382196280/custom-boat-tote-bag-canvas-tote-bag?ref=hp_editors_picks_primary-3&logging_key=1e4a37ab2e6157035f7997723d8d8b03643ba35a%3A1382196280"
-        print(f"Đang điều hướng đến {url}...")
-        await automation.navigate(url)
-        print(f"✓ Đã điều hướng thành công!")
-        print(f"Page title: {await automation.page.title()}")
-        print()
+        for page_num in range(1, search_input.pages + 1):
+            target_url = (
+                f"https://www.etsy.com/search?q={quote_plus(search_input.keyword)}"
+                f"&page={page_num}&ref=pagination"
+            )
+            print(f"Đang điều hướng đến trang {page_num}: {target_url}")
+            await automation.navigate(target_url)
+            print(f"✓ Trang {page_num} - title: {await automation.page.title()}")
 
-        # Chờ để bắt các API responses
-        print("Đang chờ và thu thập dữ liệu từ API responses...")
-        await asyncio.sleep(5)
+            # Chờ trang tải ổn định (10 giây)
+            await asyncio.sleep(10)
 
-        # Hiển thị kết quả
-        print()
-        print("=" * 60)
-        print(f"Đã bắt được {len(captured_data)} API responses")
-        print("=" * 60)
-        if captured_data:
-            for i, item in enumerate(captured_data, 1):
-                print(f"\n[{i}] URL: {item['url']}")
-                print(f"    Status: {item['status']}")
-                print(f"    Data keys: {list(item['data'].keys()) if isinstance(item['data'], dict) else 'Not a dict'}")
-        else:
-            print("\n⚠ Không bắt được API response nào. Etsy có thể đã thay đổi cấu trúc API.")
+            print("Đang lấy body (bỏ script/style, nén khoảng trắng)...")
+            try:
+                body_html = await automation.page.evaluate(
+                    """
+                    () => {
+                        const clone = document.body.cloneNode(true);
+                        clone.querySelectorAll('script, style').forEach((el) => el.remove());
+                        return clone.outerHTML;
+                    }
+                    """
+                )
+
+                cleaned_body = re.sub(r"\s+", " ", body_html).strip()
+
+                # Trích xuất dữ liệu HeyEtsy từ body
+                extracted = extract_heyetsy_data(cleaned_body)
+                for item in extracted:
+                    lid = item.get("listing_id")
+                    if lid and lid not in all_data:
+                        all_data[lid] = item
+
+                print(f"✓ Trang {page_num}: trích được {len(extracted)} mục (tổng duy nhất: {len(all_data)})")
+            except Exception as e:
+                print(f"❌ Lỗi khi xử lý trang {page_num}: {e}")
+            print()
+
+        # Lưu toàn bộ dữ liệu đã gom
+        try:
+            save_json(all_data.values(), data_output_file)
+            print(f"✓ Đã lưu {len(all_data)} mục vào: {data_output_file}")
+        except Exception as e:
+            print(f"❌ Không thể lưu file dữ liệu: {e}")
         print()
         
         # Lưu ý: KHÔNG đóng browser vì đây là Chrome của bạn
