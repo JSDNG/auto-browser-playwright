@@ -41,6 +41,10 @@ class ListingParser(HTMLParser):
             if tag == "a":
                 entry.setdefault("url", attr.get("href"))
                 entry.setdefault("title", attr.get("aria-label"))
+            if tag == "video":
+                poster = attr.get("poster")
+                if poster:
+                    entry.setdefault("image", poster)
             classes = (attr.get("class") or "").split()
             if tag == "video" or attr.get("data-listing-card-video") or "video" in classes:
                 entry["is_video"] = True
@@ -54,6 +58,10 @@ class ListingParser(HTMLParser):
                 src = attr.get("src") or attr.get("data-src")
                 if src:
                     entry.setdefault("image", src)
+            if tag == "video":
+                poster = attr.get("poster")
+                if poster:
+                    entry.setdefault("image", poster)
             classes = (attr.get("class") or "").split()
             if tag == "video" or attr.get("data-listing-card-video") or "video" in classes:
                 entry["is_video"] = True
@@ -126,9 +134,10 @@ def extract_heyetsy_data(html_text: str) -> List[Dict]:
 
     results: List[Dict] = []
     for listing_id, block_text in overlay_parser.blocks.items():
-        total_sold = get_num("Total Sold", block_text)
-        if total_sold is None or total_sold <= 5:
+        sold_24h = get_num("Sold 24H", block_text)
+        if sold_24h is None or sold_24h <= 5:
             continue
+        total_sold = get_num("Total Sold", block_text)
 
         data = {
             "listing_id": listing_id,
@@ -136,7 +145,7 @@ def extract_heyetsy_data(html_text: str) -> List[Dict]:
             "url": None,
             "image": None,
             "views_24h": get_num("Views 24H", block_text),
-            "sold_24h": get_num("Sold 24H", block_text),
+            "sold_24h": sold_24h,
             "total_views": get_num("Total Views", block_text),
             "total_sold": total_sold,
             "favorites": get_num("Favorites", block_text),
@@ -145,7 +154,7 @@ def extract_heyetsy_data(html_text: str) -> List[Dict]:
 
         listing_info = listing_parser.listings.get(listing_id, {})
         if listing_info.get("is_video"):
-            continue
+            data["is_video"] = True
         for key in ("title", "url", "image"):
             if listing_info.get(key):
                 data[key] = listing_info[key]

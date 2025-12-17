@@ -3,6 +3,7 @@ Test script để launch Playwright với HideMyAcc profile qua user-data-dir
 """
 import asyncio
 import sys
+import re
 from pathlib import Path
 
 # Add project root to path
@@ -174,7 +175,7 @@ async def test_launch_with_profile(profile_id: str = None, use_command_line_conf
                 print()
         
         # Test navigate với error handling tốt hơn
-        test_url = "https://www.etsy.com"
+        test_url = "https://www.tiktok.com/shop/store/tji-clothing/7494122671774204969?source=product_detail&enter_method=pdp_seller_name&first_entrance=homepage_hot&first_entrance_position=navigation_bar&first_entrance_tt_scene=seo"
         print(f"Đang điều hướng đến {test_url}...")
         try:
             # Tăng timeout cho proxy
@@ -186,6 +187,27 @@ async def test_launch_with_profile(profile_id: str = None, use_command_line_conf
             print(f"Page title: {await automation.page.title()}")
             print(f"Page URL: {automation.page.url}")
             print()
+            
+            # Lấy body_html giống cdp_connection.py (bỏ script/style, nén khoảng trắng) và lưu
+            try:
+                body_html = await automation.page.evaluate(
+                    """
+                    () => {
+                        const clone = document.body.cloneNode(true);
+                        clone.querySelectorAll('script, style').forEach((el) => el.remove());
+                        return clone.outerHTML;
+                    }
+                    """
+                )
+                cleaned_body = re.sub(r"\\s+", " ", body_html).strip()
+                output_path = project_root / "data.html"
+                output_path.write_text(cleaned_body, encoding="utf-8")
+                print(f"✓ Đã lưu body_html đã làm sạch vào: {output_path}")
+            except Exception as save_error:
+                print(f"⚠️  Không thể lưu HTML: {save_error}")
+                import traceback
+                traceback.print_exc()
+                print()
         except Exception as nav_error:
             print(f"❌ Lỗi khi navigate: {nav_error}")
             print()
