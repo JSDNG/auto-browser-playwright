@@ -11,19 +11,38 @@ Hướng dẫn sử dụng:
    python3 src/app/cdp_connection.py
 """
 import asyncio
+import json
 import re
 import sys
 from pathlib import Path
 from urllib.parse import quote_plus
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.utils.heyetsy_parser import extract_heyetsy_data
-from src.models.output import save_json
 from src.core.automation import PlaywrightAutomation
 from src.models import SearchInput
+
+WEBHOOK_URL = "https://n8n.supover.com/webhook/crawler-etsy"
+
+
+def _payload_to_json_bytes(data_iterable):
+    """Convert iterable of mappings to JSON bytes."""
+    return json.dumps(list(data_iterable), ensure_ascii=False).encode("utf-8")
+
+
+def _post_json(webhook_url: str, payload: bytes):
+    """Send JSON payload to webhook via POST."""
+    request = Request(webhook_url, data=payload, method="POST")
+    # Gửi JSON bytes nhưng Content-Type cần là application/json
+    request.add_header("Content-Type", "application/json")
+    request.add_header("Content-Length", str(len(payload)))
+    with urlopen(request, timeout=30) as response:
+        return response.read()
 
 
 async def connect_to_chrome_via_cdp():
@@ -38,7 +57,6 @@ async def connect_to_chrome_via_cdp():
         pages_val = 5
 
     search_input = SearchInput(keyword=keyword, pages=pages_val)
-    data_output_file = Path(project_root) / "captured_data.json"
     print("=" * 60)
     print("Kết nối Playwright với Chrome qua CDP")
     print("=" * 60)
@@ -87,6 +105,12 @@ async def connect_to_chrome_via_cdp():
                 # Trích xuất dữ liệu HeyEtsy từ body
                 extracted = extract_heyetsy_data(cleaned_body)
                 for item in extracted:
+                    # Bỏ qua nếu thiếu tiêu đề
+                    if not item.get("title"):
+                        continue
+                    # Bỏ qua nếu thiếu ảnh
+                    if not item.get("image"):
+                        continue
                     lid = item.get("listing_id")
                     if lid and lid not in all_data:
                         all_data[lid] = item
@@ -96,12 +120,16 @@ async def connect_to_chrome_via_cdp():
                 print(f"❌ Lỗi khi xử lý trang {page_num}: {e}")
             print()
 
-        # Lưu toàn bộ dữ liệu đã gom
+        # Gửi toàn bộ dữ liệu đã gom tới webhook dưới dạng JSON
         try:
-            save_json(all_data.values(), data_output_file)
-            print(f"✓ Đã lưu {len(all_data)} mục vào: {data_output_file}")
-        except Exception as e:
-            print(f"❌ Không thể lưu file dữ liệu: {e}")
+            json_payload = _payload_to_json_bytes(all_data.values())
+            print(
+                f"Đang gửi {len(all_data)} mục tới webhook (POST JSON): {WEBHOOK_URL}"
+            )
+            await asyncio.to_thread(_post_json, WEBHOOK_URL, json_payload)
+            print("✓ Đã gửi dữ liệu thành công tới webhook")
+        except (HTTPError, URLError, Exception) as e:
+            print(f"❌ Không thể gửi dữ liệu tới webhook: {e}")
         print()
         
         # Lưu ý: KHÔNG đóng browser vì đây là Chrome của bạn
