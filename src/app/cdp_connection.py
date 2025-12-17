@@ -20,8 +20,8 @@ from urllib.parse import quote_plus
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.app.heyetsy_parser import extract_heyetsy_data
-from src.app.output import save_json
+from src.utils.heyetsy_parser import extract_heyetsy_data
+from src.models.output import save_json
 from src.core.automation import PlaywrightAutomation
 from src.models import SearchInput
 

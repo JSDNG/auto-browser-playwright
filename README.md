@@ -2,6 +2,8 @@
 
 FastAPI server dùng Playwright để kết nối tới Chrome đang chạy sẵn qua CDP và tự động kiểm tra trạng thái **USPS tracking** (đã delivered hay chưa) theo lô (batch).
 
+> Lưu ý: Ngoài API USPS, repo hiện còn có script `src/app/cdp_connection.py` phục vụ việc thu thập dữ liệu HeyEtsy qua Chrome đã mở sẵn (CDP). Xem mục "HeyEtsy data capture" bên dưới để chạy nhanh.
+
 ### Tổng quan
 
 - **Input**: Danh sách shipments với `shipment_id` và `tracking_link` (USPS URL).
@@ -92,6 +94,19 @@ Server sẽ chạy ở `http://localhost:5674`:
 
 ---
 
+## HeyEtsy data capture (CDP script)
+
+- **Mục đích**: Kết nối Chrome đã mở sẵn qua CDP, duyệt kết quả tìm kiếm Etsy và trích dữ liệu từ overlay HeyEtsy.
+- **Chạy**:
+  ```bash
+  # keyword mặc định "t-shirt", pages mặc định 5
+  python src/app/cdp_connection.py "<keyword>" <pages>
+  ```
+- **Cách làm**: Script dùng `PlaywrightAutomation.connect_over_cdp` → điều hướng từng trang tìm kiếm Etsy → đợi trang ổn định → `extract_heyetsy_data` (trong `src/utils/heyetsy_parser.py`) để lọc listing (bỏ video, yêu cầu `total_sold > 5`) → ghi kết quả duy nhất theo `listing_id` vào `captured_data.json` bằng `save_json` (trong `src/models/output.py`).
+- **Yêu cầu**: Chrome đã bật `--remote-debugging-port=9222` và đang mở, giống phần chuẩn bị ở trên.
+
+---
+
 ## Endpoint chính
 
 ### POST `/api/v1/cdp/auto-check-tracking`
@@ -161,10 +176,11 @@ src/
 │   ├── __init__.py        # export PlaywrightAutomation
 │   └── automation.py      # Playwright wrapper: connect_over_cdp, navigate, detach
 ├── models/
-│   ├── __init__.py        # export models dùng nội bộ
-│   └── input.py           # ViewportConfig, AutomationInput, ...
+│   ├── __init__.py        # export models & helpers dùng nội bộ
+│   ├── input.py           # ViewportConfig, SearchInput (CLI)
+│   └── output.py          # save_json helper
 └── utils/
-    └── __init__.py        # (để dành cho future utilities)
+    └── heyetsy_parser.py  # extract_heyetsy_data helper
 ```
 
 Các phần cũ liên quan tới n8n, Amazon search, Docker, test suite cũ... đã được loại bỏ khỏi code chính. Tài liệu chi tiết cho kiến trúc mới nằm trong thư mục `docs/`.

@@ -1,24 +1,20 @@
-# Implementation Plan - CDP Tracking API (USPS)
+# Implementation Plan - CDP Tracking API (USPS) & HeyEtsy scraper
 
 ## 1. Kiến trúc hệ thống (rút gọn)
 
-FastAPI server nhỏ, chỉ tập trung vào một use case:
-
-- Nhận danh sách shipments (ID + USPS tracking link)
-- Kết nối Chrome đang chạy sẵn qua CDP
-- Mở từng tracking link, đọc DOM
-- Xác định shipment đã delivered hay chưa, và nếu có thì lấy thời gian delivered
+- **FastAPI (USPS)**: Nhận danh sách shipments, kết nối Chrome qua CDP, mở tracking link USPS và trả về trạng thái delivered.
+- **CLI HeyEtsy scraper**: Script `src/app/cdp_connection.py` kết nối Chrome qua CDP, duyệt kết quả tìm kiếm Etsy, trích overlay HeyEtsy và lưu vào `captured_data.json`.
 
 Sơ đồ đơn giản:
 
 ```
-Client ──▶ FastAPI (`api_server.py`) ──▶ Chrome (CDP) ──▶ USPS Tracking Page
+Client/CLI ──▶ PlaywrightAutomation ──▶ Chrome (CDP) ──▶ Target page
 ```
 
 ## 2. Các thành phần chính
 
 - `src/app/api_server.py`: FastAPI app, định nghĩa endpoint `POST /api/v1/cdp/auto-check-tracking`
-- `src/app/cdp_connection.py`: Hàm `connect_to_chrome_via_cdp` dùng Playwright để nói chuyện với Chrome qua CDP
+- `src/app/cdp_connection.py`: CLI/CDP helper để scrape HeyEtsy
 - `src/core/automation.py`: Lớp `PlaywrightAutomation` với method `connect_over_cdp`
 - `src/models/input.py`: Các Pydantic models dùng nội bộ cho automation (viewport, timeout, ...)
 
@@ -28,16 +24,17 @@ Client ──▶ FastAPI (`api_server.py`) ──▶ Chrome (CDP) ──▶ USPS
 src/
 ├── app/
 │   ├── __init__.py        # export FastAPI app
-│   ├── api_server.py      # CDP Tracking API
-│   └── cdp_connection.py  # CDP helper
+│   ├── api_server.py      # CDP Tracking API (USPS)
+│   └── cdp_connection.py  # CDP helper / HeyEtsy scraper
 ├── core/
 │   ├── __init__.py        # export PlaywrightAutomation
 │   └── automation.py      # Playwright wrapper
 ├── models/
-│   ├── __init__.py        # export AutomationInput
-│   └── input.py           # ViewportConfig, AutomationInput, ...
+│   ├── __init__.py        # export ViewportConfig, SearchInput, save_json
+│   ├── input.py           # ViewportConfig, SearchInput (CLI)
+│   └── output.py          # save_json helper
 └── utils/
-    └── __init__.py        # (trống, để dành cho tương lai)
+    └── heyetsy_parser.py  # extract_heyetsy_data helper
 ```
 
 ## 4. Luồng xử lý endpoint chính
@@ -71,13 +68,14 @@ Chi tiết request/response và ví dụ gọi đã được mô tả đầy đ�
 
 Chi tiết hơn xem `CDP_CONNECTION.md` và code trong `src/app/cdp_connection.py`.
 
-## 6. Ghi chú refactor
+## 6. HeyEtsy scraper (src/app/cdp_connection.py)
 
-Toàn bộ phần cũ liên quan tới:
+- Nhận `keyword` (mặc định "t-shirt") và `pages` (mặc định 5) từ CLI.
+- Kết nối Chrome đang chạy qua CDP (`PlaywrightAutomation.connect_over_cdp`).
+- Điều hướng từng trang tìm kiếm Etsy, đợi trang ổn định.
+- Dùng `extract_heyetsy_data` (trong `src/utils/heyetsy_parser.py`) để trích overlay HeyEtsy, bỏ video và bỏ listing có `total_sold <= 5`.
+- Gộp kết quả duy nhất theo `listing_id` và lưu vào `captured_data.json` bằng `save_json` (trong `src/models/output.py`).
 
-- `server_playwright.py`, `main.py`
-- `actions.py`, `extractor.py`
-- `models/output.py` (AutomationOutput, ErrorResponse)
-- n8n workflows, Amazon product search, browser session management
+## 7. Ghi chú refactor
 
-đã được loại bỏ khỏi code và tài liệu; file này chỉ mô tả kiến trúc và luồng xử lý cho CDP Tracking API hiện tại.
+Toàn bộ phần cũ liên quan tới n8n, Amazon search, `server_playwright.py`, `main.py`, `actions.py`, `extractor.py` đã được loại bỏ khỏi code và tài liệu; file này chỉ mô tả kiến trúc và luồng xử lý hiện tại (USPS API + HeyEtsy scraper).

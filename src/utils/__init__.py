@@ -1,6 +1,7 @@
 """
-Utility package (currently empty).
-Kept only so `src.utils` remains a valid package if imported externally.
+Utility helpers.
 """
 
-__all__: list[str] = []
+from src.utils.heyetsy_parser import extract_heyetsy_data
+
+__all__ = ["extract_heyetsy_data"]

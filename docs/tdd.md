@@ -1,4 +1,4 @@
-# Test Driven Development (TDD) - CDP Tracking API (USPS)
+# Test Driven Development (TDD) - CDP Tracking API (USPS) & HeyEtsy scraper
 
 ## 1. Tổng quan
 
@@ -21,6 +21,10 @@ Client (PHP/Python/...) ──▶ FastAPI (`api_server.py`) ──▶ Chrome (CD
                              USPS Tracking Page
 ```
 
+```
+CLI (keyword/pages) ──▶ cdp_connection.py ──▶ Chrome (CDP) ──▶ Etsy search pages ──▶ HeyEtsy overlay
+```
+
 ## 1.2. Project Structure (liên quan tới API này)
 
 ```
@@ -30,8 +34,11 @@ src/
 │   └── cdp_connection.py  # Hàm connect_to_chrome_via_cdp
 ├── core/
 │   └── automation.py      # PlaywrightAutomation (launch/connect_over_cdp)
-└── models/
-    └── input.py           # AutomationInput / ViewportConfig (dùng nội bộ)
+├── models/
+│   ├── input.py           # SearchInput / ViewportConfig (dùng nội bộ)
+│   └── output.py          # save_json helper
+└── utils/
+    └── heyetsy_parser.py  # extract_heyetsy_data helper
 ```
 
 ## 2. User Stories & Test Ideas (rút gọn)
@@ -88,4 +95,11 @@ Do phần lớn logic phụ thuộc vào thực tế trang USPS + Chrome thật,
 -   Viết **integration tests** đơn giản chạy với Chrome CDP thật (có thể chạy thủ công khi cần)
 -   Với unit test, có thể mock `PlaywrightAutomation` nếu muốn, nhưng không bắt buộc cho use case nhỏ này
 
-File này chỉ giữ vai trò mô tả ý tưởng test để tham khảo, toàn bộ nội dung cũ liên quan tới n8n, `server_playwright.py`, `main.py`, `actions.py`, `extractor.py`, `output.py` đã được loại bỏ để phù hợp kiến trúc mới.
+File này chỉ giữ vai trò mô tả ý tưởng test để tham khảo, toàn bộ nội dung cũ liên quan tới n8n, `server_playwright.py`, `main.py`, `actions.py`, `extractor.py` đã được loại bỏ để phù hợp kiến trúc mới.
+
+## 5. HeyEtsy scraper (cdp_connection.py) - Test ideas
+
+- Khi parse HTML mẫu, `extract_heyetsy_data` bỏ video listing và bỏ `total_sold <= 5`.
+- Gộp kết quả duy nhất theo `listing_id` khi nhiều trang chứa cùng listing.
+- Lưu đúng định dạng JSON (UTF-8, indent=2) vào `captured_data.json` thông qua `save_json`.
+- Đường dẫn output tồn tại và được ghi khi Chrome/CDP không lỗi.

@@ -48,8 +48,9 @@ Xây dựng FastAPI server với Playwright để:
 ## 🏗️ Current Implementation Status
 
 -   **Server chính**: `src/app/api_server.py`
--   **CDP helper**: `src/app/cdp_connection.py`
+-   **CDP helper / HeyEtsy scraper**: `src/app/cdp_connection.py` (kết nối Chrome qua CDP, duyệt Etsy, lưu `captured_data.json`)
 -   **Core automation**: `src/core/automation.py`
--   **Models**: `src/models/input.py`
+-   **Models & helpers**: `src/models/input.py`, `src/models/output.py`
+-   **Etsy parser helper**: `src/utils/heyetsy_parser.py`
 
-Toàn bộ phần cũ về n8n, Amazon search, `server_playwright.py`, `main.py`, `actions.py`, `extractor.py`, `output.py` đã được loại bỏ và không còn áp dụng cho project hiện tại.
+Toàn bộ phần cũ về n8n, Amazon search, `server_playwright.py`, `main.py`, `actions.py`, `extractor.py` đã được loại bỏ và không còn áp dụng cho project hiện tại.

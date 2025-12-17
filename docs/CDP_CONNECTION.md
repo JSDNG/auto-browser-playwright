@@ -63,6 +63,15 @@ await automation.navigate("https://example.com")
 
 Xem file `src/app/cdp_connection.py` để có ví dụ hoàn chỉnh.
 
+### Ví dụ script HeyEtsy (CLI)
+
+```
+# keyword mặc định "t-shirt", pages mặc định 5
+python src/app/cdp_connection.py "<keyword>" <pages>
+```
+
+Luồng chính: kết nối Chrome đang mở qua CDP → duyệt các trang tìm kiếm Etsy → trích overlay HeyEtsy bằng `extract_heyetsy_data` (bỏ listing video, yêu cầu `total_sold > 5`) → lưu kết quả duy nhất theo `listing_id` vào `captured_data.json` bằng `save_json`.
+
 ## Troubleshooting
 
 ### Lỗi: "Target closed" hoặc "Connection refused"
