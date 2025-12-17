@@ -135,7 +135,7 @@ def extract_heyetsy_data(html_text: str) -> List[Dict]:
     results: List[Dict] = []
     for listing_id, block_text in overlay_parser.blocks.items():
         sold_24h = get_num("Sold 24H", block_text)
-        if sold_24h is None or sold_24h <= 5:
+        if sold_24h is None or sold_24h <= 2:
             continue
         total_sold = get_num("Total Sold", block_text)
 
