@@ -36,7 +36,7 @@ class PlaywrightAutomation:
         self.page = await self.context.new_page()
 
     async def launch_with_profile(self, user_data_dir: str, executable_path: str = None, channel: str = None, 
-                                   proxy: dict = None, extra_args: list = None):
+                                   proxy: dict = None, extra_args: list = None, require_executable: bool = False):
         """
         Launch browser với user-data-dir (profile) cụ thể
         
@@ -117,6 +117,9 @@ class PlaywrightAutomation:
         elif channel:
             launch_options["channel"] = channel
         # Nếu không có cả hai, Playwright sẽ dùng browser mặc định
+        # Nếu yêu cầu bắt buộc có executable_path mà lại không set được, raise để tránh fallback Chromium mặc định
+        if require_executable and "executable_path" not in launch_options:
+            raise RuntimeError("Executable path bắt buộc nhưng không tìm thấy. Kiểm tra lại Marco/Chrome path.")
         
         # Debug: In ra một số thông tin quan trọng
         print()

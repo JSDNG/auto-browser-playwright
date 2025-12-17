@@ -39,6 +39,7 @@ Chỉ cần chạy một lệnh duy nhất:
 
 ```bash
 python3 src/app/hidemyacc_connection.py --profile profile1
+ python3 src/app/hidemyacc_connection_profile.py --profile hma_6898af88effa52a76ecbe4ec --use-command-line
 ```
 
 **Code sẽ tự động:**

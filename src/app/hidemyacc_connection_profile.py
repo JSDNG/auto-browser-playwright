@@ -148,7 +148,8 @@ async def test_launch_with_profile(profile_id: str = None, use_command_line_conf
             profile['user_data_dir'],
             executable_path=executable_path,
             proxy=proxy,
-            extra_args=extra_args
+            extra_args=extra_args,
+            require_executable=True  # Bắt buộc dùng đúng executable để không fallback Chromium mặc định
         )
         
         print("✓ Đã launch thành công!")
