@@ -2,7 +2,7 @@
 
 # Script để khởi động Chrome với CDP trên macOS
 
-PORT=${1:-9222}  # Port mặc định 9222, có thể truyền vào tham số
+PORT=${1:-9223}  # Port mặc định 9223, có thể truyền vào tham số
 
 # Tạo thư mục user data riêng cho CDP
 USER_DATA_DIR="/tmp/chrome-cdp-profile"

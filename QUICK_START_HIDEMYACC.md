@@ -67,7 +67,7 @@ async def main():
     # Tự động tìm profile, khởi động Chrome và kết nối
     automation = await connect_to_hidemyacc_profile(
         'profile1',      # Tên profile
-        cdp_port=9222,   # Port CDP
+        cdp_port=9223,   # Port CDP
         auto_launch=True # Tự động khởi động (mặc định True)
     )
     
@@ -176,7 +176,7 @@ python3 src/app/hidemyacc_connection.py --help
 2. macOS: Chrome phải ở `/Applications/Google Chrome.app/`
 3. Thử khởi động thủ công:
    ```bash
-   ./scripts/start_chrome_with_hidemyacc.sh 9222 profile1
+   ./scripts/start_chrome_with_hidemyacc.sh 9223 profile1
    ```
 
 ### Lỗi: "CDP không kết nối được"
@@ -184,7 +184,7 @@ python3 src/app/hidemyacc_connection.py --help
 **Giải pháp:**
 1. Kiểm tra port có bị chiếm không:
    ```bash
-   lsof -i :9222  # macOS/Linux
+   lsof -i :9223  # macOS/Linux
    ```
 2. Đợi thêm vài giây để Chrome khởi động hoàn toàn
 3. Thử port khác:

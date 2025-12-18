@@ -184,7 +184,7 @@ class HideMyAccManager:
             print(f"    User Data: {profile['user_data_dir']}")
             print()
     
-    def check_cdp_running(self, port: int = 9222) -> bool:
+    def check_cdp_running(self, port: int = 9223) -> bool:
         """Kiểm tra xem CDP có đang chạy tại port không"""
         try:
             url = f"http://localhost:{port}/json"
@@ -194,7 +194,7 @@ class HideMyAccManager:
         except:
             return False
     
-    def launch_chrome_with_profile(self, profile_id: str, port: int = 9222) -> bool:
+    def launch_chrome_with_profile(self, profile_id: str, port: int = 9223) -> bool:
         """
         Tự động khởi động Chrome với HideMyAcc profile + CDP
         

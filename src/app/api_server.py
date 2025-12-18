@@ -11,7 +11,7 @@ API này KHÔNG cần body đầu vào – chỉ cần gọi endpoint là tự x
 Cấu hình nhanh (chỉnh trực tiếp trong file cho dễ deploy, không cần .env):
 - CONFIG_API_HOST: host mà Uvicorn sẽ bind (mặc định: 0.0.0.0)
 - CONFIG_API_PORT: port local của API (mặc định: 5674)
-- CONFIG_CDP_PORT: port CDP cho Chrome/Marco (mặc định: 9222)
+- CONFIG_CDP_PORT: port CDP cho Chrome/Marco (mặc định: 9223)
 """
 # CRITICAL: Set Windows event loop policy FIRST, before any imports
 import sys
@@ -35,6 +35,8 @@ import logging
 
 from src.utils.hidemyacc import HideMyAccManager
 from src.core.automation import PlaywrightAutomation
+from src.models import SearchInput
+from src.app.cdp_connection import scrape_etsy_via_cdp
 
 
 # =========================
@@ -46,7 +48,7 @@ CONFIG_API_HOST = "0.0.0.0"
 CONFIG_API_PORT = 5674
 
 # CDP port cho Chrome/Marco (HideMyAcc)
-CONFIG_CDP_PORT = 9222
+CONFIG_CDP_PORT = 9223
 
 
 # Setup logging (đơn giản, log ra stdout/terminal)
@@ -76,70 +78,48 @@ class HideMyAccConnectionResponse(BaseModel):
 
 @api_router.post("/hidemyacc/connect", response_model=HideMyAccConnectionResponse)
 async def connect_hidemyacc_profile() -> HideMyAccConnectionResponse:
+    # ... existing implementation ...
+    pass
+
+
+class EtsyScrapeResponse(BaseModel):
+    """Response cho việc crawl Etsy"""
+
+    success: bool
+    message: str
+    count: Optional[int] = 0
+    error: Optional[str] = None
+
+
+@api_router.post("/etsy/scrape", response_model=EtsyScrapeResponse)
+async def scrape_etsy(search_input: SearchInput) -> EtsyScrapeResponse:
     """
-    Tự động:
-    - Tìm HideMyAcc profiles (qua `HideMyAccManager`)
-    - Chọn profile đầu tiên tìm được
-    - Nếu CDP chưa chạy thì tự khởi động Chrome/Marco với profile đó
-    - Kết nối Playwright với Chrome/Marco qua CDP
-
-    ✅ KHÔNG cần body đầu vào.
+    Crawl dữ liệu từ Etsy theo keyword và số trang.
+    Yêu cầu Chrome (hoặc HideMyAcc profile) đã được khởi động với CDP port 9223.
     """
-    manager = HideMyAccManager()
-    profiles = manager.find_profiles()
-
-    if not profiles:
-        logger.error("Không tìm thấy HideMyAcc profiles nào trên máy")
-        raise HTTPException(
-            status_code=500,
-            detail="Không tìm thấy HideMyAcc profiles. Hãy kiểm tra lại cài đặt HideMyAcc.",
-        )
-
-    # Đơn giản: lấy profile đầu tiên
-    profile = profiles[0]
-    profile_id = profile.get("id") or profile.get("name")
-    profile_name = profile.get("name")
-
-    logger.info(f"Đang sử dụng HideMyAcc profile: id={profile_id}, name={profile_name}")
-
-    # Đảm bảo CDP đang chạy
-    if manager.check_cdp_running(CONFIG_CDP_PORT):
-        logger.info(f"CDP đã chạy sẵn tại port {CONFIG_CDP_PORT}")
-    else:
-        logger.info(f"CDP chưa chạy. Đang khởi động Chrome/Marco với profile {profile_id}...")
-        started = manager.launch_chrome_with_profile(profile_id, CONFIG_CDP_PORT)
-        if not started:
-            logger.error("Không thể khởi động Chrome/Marco với HideMyAcc profile")
-            raise HTTPException(
-                status_code=500,
-                detail="Không thể khởi động Chrome/Marco với HideMyAcc profile. Vui lòng kiểm tra cài đặt HideMyAcc.",
-            )
-
-    # Kết nối Playwright qua CDP
-    automation = PlaywrightAutomation()
-    cdp_endpoint = f"http://localhost:{CONFIG_CDP_PORT}"
+    logger.info(f"Nhận yêu cầu scrape Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
 
     try:
-        logger.info(f"Đang kết nối Playwright với Chrome qua CDP tại {cdp_endpoint}...")
-        await automation.connect_over_cdp(cdp_endpoint)
-        logger.info("Đã kết nối Playwright thành công với HideMyAcc profile.")
-
-        # Ở đây ta chỉ test kết nối, không làm gì thêm -> detach để không đóng browser
-        await automation.detach()
-        logger.info("Đã detach khỏi Playwright, Chrome/Marco vẫn tiếp tục chạy.")
-
-        return HideMyAccConnectionResponse(
-            success=True,
-            message="Kết nối HideMyAcc profile + Chrome/Marco + Playwright thành công.",
-            profile_id=profile_id,
-            profile_name=profile_name,
-            cdp_port=CONFIG_CDP_PORT,
+        result = await scrape_etsy_via_cdp(
+            keyword=search_input.keyword, pages=search_input.pages
         )
+
+        if result.get("success"):
+            return EtsyScrapeResponse(
+                success=True,
+                message=result.get("message", "Crawl thành công"),
+                count=result.get("count", 0),
+            )
+        else:
+            return EtsyScrapeResponse(
+                success=False,
+                message="Crawl thất bại",
+                error=result.get("error"),
+            )
     except Exception as e:
-        logger.exception(f"Lỗi khi kết nối Playwright qua CDP: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Lỗi khi kết nối Playwright qua CDP: {e}",
+        logger.exception(f"Lỗi khi thực hiện scrape Etsy: {e}")
+        return EtsyScrapeResponse(
+            success=False, message="Lỗi server khi thực hiện scrape", error=str(e)
         )
 
 

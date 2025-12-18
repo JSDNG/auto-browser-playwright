@@ -2,7 +2,7 @@
 
 # Script để dừng Chrome đang chạy với CDP
 
-PORT=${1:-9222}  # Port mặc định 9222, có thể truyền vào tham số
+PORT=${1:-9223}  # Port mặc định 9223, có thể truyền vào tham số
 
 echo "Đang tìm Chrome đang chạy với CDP tại port $PORT..."
 

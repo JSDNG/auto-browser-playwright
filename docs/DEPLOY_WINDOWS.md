@@ -11,7 +11,7 @@ Tài liệu này hướng dẫn bạn biến `api_server.py` thành dịch vụ 
   - Lắng nghe trên `0.0.0.0:5674` (xem cuối file):
     - `uvicorn.run(app, host="0.0.0.0", port=5674)`
 - **Chrome**:
-  - Phải khởi động với `--remote-debugging-port=9222`.
+  - Phải khởi động với `--remote-debugging-port=9223`.
 - **Domain ngoài**:
   - Domain trỏ về IP máy/server.
   - Reverse proxy (Nginx/Caddy/IIS/Cloudflare Tunnel/ngrok) forward request đến `http://127.0.0.1:5674`.
@@ -105,12 +105,12 @@ Nếu có lỗi, sửa cho chạy ổn **trước khi** triển khai reverse pro
 
 ## 4. Khởi động Chrome với CDP (remote debugging)
 
-API `check_delivery_status` yêu cầu Chrome chạy với cờ `--remote-debugging-port=9222`:
+API `check_delivery_status` yêu cầu Chrome chạy với cờ `--remote-debugging-port=9223`:
 
 Ví dụ trên Windows:
 
 ```bash
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 Gợi ý:
@@ -119,7 +119,7 @@ Gợi ý:
 
 ```bat
 @echo off
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 - Nếu bạn muốn Chrome cũng chạy “nền” trên server, có thể:
@@ -323,7 +323,7 @@ wait_time = 2
 
 1. Cài Python + tạo venv + `pip install -r requirements.txt`.
 2. Chạy API bằng `start_auto_check_tracking.bat` → truy cập `http://127.0.0.1:5674/docs` để kiểm tra.
-3. Khởi động Chrome với `--remote-debugging-port=9222`.
+3. Khởi động Chrome với `--remote-debugging-port=9223`.
 4. Mở firewall cho port `5674` (nếu cần).
 5. Cấu hình domain:
    - DNS trỏ về IP server.

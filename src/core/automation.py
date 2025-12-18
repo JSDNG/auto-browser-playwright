@@ -157,17 +157,17 @@ class PlaywrightAutomation:
         # Context chứa browser instance bên trong
         self.browser = None  # Không có browser object riêng với persistent context
 
-    async def connect_over_cdp(self, cdp_endpoint: str = "http://localhost:9222"):
+    async def connect_over_cdp(self, cdp_endpoint: str = "http://localhost:9223"):
         """
         Connect to an existing Chrome instance via CDP (Chrome DevTools Protocol)
         
         Args:
-            cdp_endpoint: CDP endpoint URL (default: http://localhost:9222)
+            cdp_endpoint: CDP endpoint URL (default: http://localhost:9223)
                           Format: http://localhost:PORT hoặc ws://localhost:PORT
         
         Yêu cầu:
-            Chrome phải được khởi động với flag: --remote-debugging-port=9222
-            Ví dụ: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9222
+            Chrome phải được khởi động với flag: --remote-debugging-port=9223
+            Ví dụ: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9223
         """
         self.playwright = await async_playwright().start()
         

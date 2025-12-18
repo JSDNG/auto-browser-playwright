@@ -28,13 +28,13 @@ from src.core.automation import PlaywrightAutomation
 from src.utils.hidemyacc import HideMyAccManager
 
 
-async def connect_to_hidemyacc_profile(profile_id: str = None, cdp_port: int = 9222, auto_launch: bool = True):
+async def connect_to_hidemyacc_profile(profile_id: str = None, cdp_port: int = 9223, auto_launch: bool = True):
     """
     Kết nối với HideMyAcc profile qua CDP
     
     Args:
         profile_id: ID của HideMyAcc profile (None để tự động chọn profile đầu tiên)
-        cdp_port: Port cho CDP (mặc định 9222)
+        cdp_port: Port cho CDP (mặc định 9223)
         auto_launch: Tự động khởi động Chrome nếu chưa chạy (mặc định True)
     """
     
@@ -66,7 +66,7 @@ async def connect_to_hidemyacc_profile(profile_id: str = None, cdp_port: int = 9
         # Nếu có nhiều profile, yêu cầu chọn
         if len(profiles) > 1:
             print("⚠️  Cần chỉ định profile_id khi gọi hàm")
-            print("   Ví dụ: connect_to_hidemyacc_profile('profile_name', 9222)")
+            print("   Ví dụ: connect_to_hidemyacc_profile('profile_name', 9223)")
             print()
             print("Hoặc chạy với --profile:")
             print("  python3 src/app/hidemyacc_connection.py --profile profile_name")
@@ -141,7 +141,7 @@ async def main():
     
     parser = argparse.ArgumentParser(description="Kết nối Playwright với HideMyAcc profile qua CDP")
     parser.add_argument("--profile", "-p", help="HideMyAcc profile ID/name")
-    parser.add_argument("--port", type=int, default=9222, help="CDP port (default: 9222)")
+    parser.add_argument("--port", type=int, default=9223, help="CDP port (default: 9223)")
     parser.add_argument("--no-auto-launch", action="store_true", help="Không tự động khởi động Chrome")
     
     args = parser.parse_args()

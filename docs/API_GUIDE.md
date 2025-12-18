@@ -30,7 +30,7 @@ python -m playwright install chromium
 ### macOS
 
 ```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
 ```
 
 Hoặc dùng script tiện ích (tự tạo profile tách biệt):
@@ -42,19 +42,19 @@ Hoặc dùng script tiện ích (tự tạo profile tách biệt):
 ### Linux
 
 ```bash
-google-chrome --remote-debugging-port=9222
+google-chrome --remote-debugging-port=9223
 ```
 
 Hoặc:
 
 ```bash
-chromium --remote-debugging-port=9222
+chromium --remote-debugging-port=9223
 ```
 
 ### Windows
 
 ```cmd
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 Hoặc dùng script tiện ích:
@@ -65,7 +65,7 @@ scripts\start_chrome_with_cdp.bat
 
 ### Kiểm tra CDP đang chạy
 
-Mở trình duyệt và truy cập: `http://localhost:9222/json`
+Mở trình duyệt và truy cập: `http://localhost:9223/json`
 
 Nếu thấy danh sách các tab đang mở dưới dạng JSON, nghĩa là CDP đã hoạt động.
 
@@ -232,8 +232,8 @@ foreach ($results as $item) {
 **Nguyên nhân:** Chrome chưa được khởi động với CDP hoặc port không đúng.
 
 **Giải pháp:**
-- Kiểm tra Chrome đã khởi động với `--remote-debugging-port=9222` chưa
-- Truy cập `http://localhost:9222/json` để xác nhận CDP đang chạy
+- Kiểm tra Chrome đã khởi động với `--remote-debugging-port=9223` chưa
+- Truy cập `http://localhost:9223/json` để xác nhận CDP đang chạy
 - Kiểm tra port có bị conflict không
 
 ### 2. Lỗi: "ModuleNotFoundError: No module named 'fastapi'"
@@ -261,7 +261,7 @@ playwright install chromium
 **Giải pháp:**
 - Khởi động lại Chrome với CDP
 - Kiểm tra Chrome có đang chạy không
-- Thử truy cập `http://localhost:9222/json` để xác nhận
+- Thử truy cập `http://localhost:9223/json` để xác nhận
 
 ## Lưu ý quan trọng
 
@@ -327,4 +327,4 @@ logging.basicConfig(level=logging.DEBUG)
 Nếu gặp vấn đề, kiểm tra:
 1. Logs của API server
 2. Chrome DevTools Console (F12)
-3. CDP endpoint: `http://localhost:9222/json`
+3. CDP endpoint: `http://localhost:9223/json`

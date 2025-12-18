@@ -17,7 +17,7 @@ Chi tiết kiến trúc và luồng xử lý xem thêm trong `docs/implement.md`
 
 - **Python**: 3.11+
 - **Chrome**: Cài Chrome trên máy (dùng system Chrome, không dùng browser đi kèm Playwright).
-- **CDP**: Chrome phải được khởi động với `--remote-debugging-port=9222`.
+- **CDP**: Chrome phải được khởi động với `--remote-debugging-port=9223`.
 
 ---
 
@@ -48,19 +48,19 @@ Chọn một trong các lệnh tương ứng hệ điều hành (có thể tùy 
 - **macOS**:
 
 ```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
 ```
 
 - **Linux**:
 
 ```bash
-google-chrome --remote-debugging-port=9222
+google-chrome --remote-debugging-port=9223
 ```
 
 - **Windows** (ví dụ path mặc định):
 
 ```bat
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-spy-etsy"
 ```
 
 Giữ cửa sổ Chrome này mở trong suốt quá trình gọi API.
@@ -103,7 +103,7 @@ Server sẽ chạy ở `http://localhost:5674`:
   python src/app/cdp_connection.py "<keyword>" <pages>
   ```
 - **Cách làm**: Script dùng `PlaywrightAutomation.connect_over_cdp` → điều hướng từng trang tìm kiếm Etsy → đợi trang ổn định → `extract_heyetsy_data` (trong `src/utils/heyetsy_parser.py`) để lọc listing (bỏ video, yêu cầu `total_sold > 5`) → ghi kết quả duy nhất theo `listing_id` vào `captured_data.json` bằng `save_json` (trong `src/models/output.py`).
-- **Yêu cầu**: Chrome đã bật `--remote-debugging-port=9222` và đang mở, giống phần chuẩn bị ở trên.
+- **Yêu cầu**: Chrome đã bật `--remote-debugging-port=9223` và đang mở, giống phần chuẩn bị ở trên.
 
 ---
 
