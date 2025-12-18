@@ -147,7 +147,7 @@ Gợi ý:
 
 Giả sử (theo môi trường thực tế của bạn):
 
-- Domain: `tracking.printfamily.com`.
+- Domain: `spyetsy.supover.com`.
 - Server Windows (hoặc máy trong LAN) có IP: `192.168.1.94`.
 - API local trên máy đó: `http://127.0.0.1:5674`.
 
@@ -156,13 +156,13 @@ Giả sử (theo môi trường thực tế của bạn):
 - Vào quản lý DNS (Cloudflare, Namecheap, v.v.).
 - Tạo bản ghi:
   - **Type**: `A`
-  - **Name**: `tracking.printfamily.com` (hoặc `tracking` tùy giao diện DNS, sao cho trỏ đúng subdomain)
+  - **Name**: `spyetsy.supover.com`
   - **Value**: IP nơi có thể truy cập tới máy `192.168.1.94`
     - Nếu bạn dùng trực tiếp IP public: nhập IP public (router sẽ NAT về 192.168.1.94).
     - Nếu chỉ dùng trong mạng LAN (không ra Internet): bạn có thể dùng DNS nội bộ hoặc file hosts.
   - TTL: auto hoặc 5–10 phút.
 
-#### Bước reverse proxy (Nginx trên Windows, cấu hình tách file riêng `check_tracking.conf`)
+#### Bước reverse proxy (Nginx trên Windows, cấu hình tách file riêng `spy_etsy.conf`)
 
 Ý tưởng: **không sửa nhiều vào `nginx.conf` mặc định**, mà:
 
@@ -176,16 +176,16 @@ http {
 ```
 
 - Mỗi project tạo **một file riêng** trong `conf.d`, ví dụ:
-  - `C:\nginx\conf\conf.d\check_tracking.conf`
+  - `C:\nginx\conf\conf.d\spy_etsy.conf`
 
 1. Cài Nginx cho Windows trên chính máy `192.168.1.94` (ví dụ tại `C:\nginx`).
 2. Tạo thư mục `C:\nginx\conf\conf.d\` nếu chưa có.
-3. Tạo file mới: `C:\nginx\conf\conf.d\check_tracking.conf` với nội dung:
+3. Tạo file mới: `C:\nginx\conf\conf.d\spy_etsy.conf` với nội dung:
 
 ```nginx
 server {
     listen 80;
-    server_name tracking.printfamily.com;
+    server_name spyetsy.supover.com;
 
     location / {
         proxy_pass http://127.0.0.1:5674;
@@ -243,11 +243,11 @@ nginx
 
 - **Kiểm tra DNS đã trỏ đúng chưa:**
 ```bash
-nslookup tracking.printfamily.com
+nslookup spyetsy.supover.com
 ```
   - Hoặc:
 ```bash
-ping tracking.printfamily.com
+ping spyetsy.supover.com
 ```
 
 - **Test kết nối từ local đến API backend:**
@@ -264,9 +264,9 @@ curl http://localhost/docs
 
 5. Kiểm tra:
    - Nếu domain provider đang terminate SSL (ví dụ Cloudflare Full/Proxied):
-     - Truy cập `https://tracking.printfamily.com/docs` từ ngoài Internet.
+     - Truy cập `https://spyetsy.supover.com/docs` từ ngoài Internet.
    - Nếu chỉ dùng HTTP nội bộ:
-     - Truy cập `http://tracking.printfamily.com/docs` trong mạng tương ứng.
+     - Truy cập `http://spyetsy.supover.com/docs` trong mạng tương ứng.
 
 ## 7. Kiểm tra, debug, tối ưu
 

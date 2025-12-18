@@ -76,10 +76,10 @@ class HideMyAccConnectionResponse(BaseModel):
     cdp_port: Optional[int] = None
 
 
-@api_router.post("/hidemyacc/connect", response_model=HideMyAccConnectionResponse)
-async def connect_hidemyacc_profile() -> HideMyAccConnectionResponse:
-    # ... existing implementation ...
-    pass
+# @api_router.post("/hidemyacc/connect", response_model=HideMyAccConnectionResponse)
+# async def connect_hidemyacc_profile() -> HideMyAccConnectionResponse:
+#     # ... existing implementation ...
+#     pass
 
 
 class EtsyScrapeResponse(BaseModel):
