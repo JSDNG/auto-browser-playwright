@@ -30,7 +30,7 @@ python -m playwright install chromium
 ### macOS
 
 ```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9224
 ```
 
 Hoặc dùng script tiện ích (tự tạo profile tách biệt):
@@ -42,19 +42,19 @@ Hoặc dùng script tiện ích (tự tạo profile tách biệt):
 ### Linux
 
 ```bash
-google-chrome --remote-debugging-port=9223
+google-chrome --remote-debugging-port=9224
 ```
 
 Hoặc:
 
 ```bash
-chromium --remote-debugging-port=9223
+chromium --remote-debugging-port=9224
 ```
 
 ### Windows
 
 ```cmd
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-debug"
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9224 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 Hoặc dùng script tiện ích:
@@ -65,7 +65,7 @@ scripts\start_chrome_with_cdp.bat
 
 ### Kiểm tra CDP đang chạy
 
-Mở trình duyệt và truy cập: `http://localhost:9223/json`
+Mở trình duyệt và truy cập: `http://localhost:9224/json`
 
 Nếu thấy danh sách các tab đang mở dưới dạng JSON, nghĩa là CDP đã hoạt động.
 
@@ -80,27 +80,27 @@ python src/app/api_server.py
 ### Cách 2: Chạy với uvicorn (khuyến nghị)
 
 ```bash
-uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5674
+uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5675
 ```
 
 **Các tham số:**
 - `--reload`: Tự động reload khi code thay đổi (chỉ dùng khi development)
 - `--host 0.0.0.0`: Cho phép truy cập từ các máy khác trong mạng
-- `--port 5674`: Port API (có thể thay đổi, mặc định trong docs là 5674)
+- `--port 5675`: Port API (có thể thay đổi, mặc định trong docs là 5675)
 
 ### Cách 3: Chạy production với uvicorn
 
 ```bash
-uvicorn src.app.api_server:app --host 0.0.0.0 --port 5674 --workers 4
+uvicorn src.app.api_server:app --host 0.0.0.0 --port 5675 --workers 4
 ```
 
 ## Truy cập API
 
 Sau khi server chạy, bạn có thể:
 
-1. **Truy cập Swagger UI** (tự động): `http://localhost:5674/docs`
-2. **Truy cập ReDoc**: `http://localhost:5674/redoc`
-3. **Health check**: `http://localhost:5674/health`
+1. **Truy cập Swagger UI** (tự động): `http://localhost:5675/docs`
+2. **Truy cập ReDoc**: `http://localhost:5675/redoc`
+3. **Health check**: `http://localhost:5675/health`
 
 ## Các Endpoints
 
@@ -138,7 +138,7 @@ Sau khi server chạy, bạn có thể:
 
 **Ví dụ với curl:**
 ```bash
-curl -X POST "http://localhost:5674/api/v1/cdp/auto-check-tracking" \
+curl -X POST "http://localhost:5675/api/v1/cdp/auto-check-tracking" \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -149,7 +149,7 @@ curl -X POST "http://localhost:5674/api/v1/cdp/auto-check-tracking" \
 ```
 
 ```bash
-curl http://localhost:5674/health
+curl http://localhost:5675/health
 ```
 
 ## Ví dụ sử dụng với Python
@@ -171,7 +171,7 @@ shipments = [
 
 # Gọi API
 response = requests.post(
-    "http://localhost:5674/api/v1/cdp/auto-check-tracking",
+    "http://localhost:5675/api/v1/cdp/auto-check-tracking",
     json=shipments,
     timeout=30,
 )
@@ -201,7 +201,7 @@ $shipments = [
     ]
 ];
 
-$ch = curl_init('http://localhost:5674/api/v1/cdp/auto-check-tracking');
+$ch = curl_init('http://localhost:5675/api/v1/cdp/auto-check-tracking');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($shipments));
@@ -232,8 +232,8 @@ foreach ($results as $item) {
 **Nguyên nhân:** Chrome chưa được khởi động với CDP hoặc port không đúng.
 
 **Giải pháp:**
-- Kiểm tra Chrome đã khởi động với `--remote-debugging-port=9223` chưa
-- Truy cập `http://localhost:9223/json` để xác nhận CDP đang chạy
+- Kiểm tra Chrome đã khởi động với `--remote-debugging-port=9224` chưa
+- Truy cập `http://localhost:9224/json` để xác nhận CDP đang chạy
 - Kiểm tra port có bị conflict không
 
 ### 2. Lỗi: "ModuleNotFoundError: No module named 'fastapi'"
@@ -261,7 +261,7 @@ playwright install chromium
 **Giải pháp:**
 - Khởi động lại Chrome với CDP
 - Kiểm tra Chrome có đang chạy không
-- Thử truy cập `http://localhost:9223/json` để xác nhận
+- Thử truy cập `http://localhost:9224/json` để xác nhận
 
 ## Lưu ý quan trọng
 
@@ -327,4 +327,4 @@ logging.basicConfig(level=logging.DEBUG)
 Nếu gặp vấn đề, kiểm tra:
 1. Logs của API server
 2. Chrome DevTools Console (F12)
-3. CDP endpoint: `http://localhost:9223/json`
+3. CDP endpoint: `http://localhost:9224/json`

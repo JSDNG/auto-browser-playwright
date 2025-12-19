@@ -2,7 +2,7 @@
 
 FastAPI server dùng Playwright để kết nối tới Chrome đang chạy sẵn qua CDP và tự động kiểm tra trạng thái **USPS tracking** (đã delivered hay chưa) theo lô (batch).
 
-> Lưu ý: Ngoài API USPS, repo hiện còn có script `src/app/cdp_connection.py` phục vụ việc thu thập dữ liệu HeyEtsy qua Chrome đã mở sẵn (CDP). Xem mục "HeyEtsy data capture" bên dưới để chạy nhanh.
+> Lưu ý: Ngoài API USPS, repo hiện còn có script `src/app/cdp_connection.py` phục vụ việc kết nối Chrome qua CDP và mở URL (mặc định: https://grok.com/) để phục vụ các tác vụ như check TM trên Grok. Xem mục "Grok TM check (CDP script)" bên dưới để chạy nhanh.
 
 ### Tổng quan
 
@@ -17,7 +17,7 @@ Chi tiết kiến trúc và luồng xử lý xem thêm trong `docs/implement.md`
 
 - **Python**: 3.11+
 - **Chrome**: Cài Chrome trên máy (dùng system Chrome, không dùng browser đi kèm Playwright).
-- **CDP**: Chrome phải được khởi động với `--remote-debugging-port=9223`.
+- **CDP**: Chrome phải được khởi động với `--remote-debugging-port=9224`.
 
 ---
 
@@ -48,19 +48,19 @@ Chọn một trong các lệnh tương ứng hệ điều hành (có thể tùy 
 - **macOS**:
 
 ```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9224
 ```
 
 - **Linux**:
 
 ```bash
-google-chrome --remote-debugging-port=9223
+google-chrome --remote-debugging-port=9224
 ```
 
 - **Windows** (ví dụ path mặc định):
 
 ```bat
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-spy-etsy"
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9224 --user-data-dir="C:\temp\chrome-spy-etsy"
 ```
 
 Giữ cửa sổ Chrome này mở trong suốt quá trình gọi API.
@@ -87,65 +87,26 @@ Hoặc bạn cũng có thể chạy trực tiếp file:
 python src/app/api_server.py
 ```
 
-Server sẽ chạy ở `http://localhost:5674`:
+Server sẽ chạy ở `http://localhost:5675`:
 
-- **Swagger UI**: `http://localhost:5674/docs`
-- **ReDoc**: `http://localhost:5674/redoc`
+- **Swagger UI**: `http://localhost:5675/docs`
+- **ReDoc**: `http://localhost:5675/redoc`
 
 ---
 
-## HeyEtsy data capture (CDP script)
+## Grok TM check (CDP script)
 
-- **Mục đích**: Kết nối Chrome đã mở sẵn qua CDP, duyệt kết quả tìm kiếm Etsy và trích dữ liệu từ overlay HeyEtsy.
+- **Mục đích**: Kết nối Chrome đã mở sẵn qua CDP, điều hướng tới URL (mặc định: https://grok.com/) để thực hiện các thao tác check TM trên Grok bằng tay hoặc automation ở tầng cao hơn.
 - **Chạy**:
   ```bash
-  # keyword mặc định "t-shirt", pages mặc định 5
-  python src/app/cdp_connection.py "<keyword>" <pages>
+  # Mặc định sẽ mở https://grok.com/
+  python src/app/cdp_connection.py
+
+  # Hoặc truyền URL khác nếu cần
+  python src/app/cdp_connection.py "https://grok.com/"
   ```
-- **Cách làm**: Script dùng `PlaywrightAutomation.connect_over_cdp` → điều hướng từng trang tìm kiếm Etsy → đợi trang ổn định → `extract_heyetsy_data` (trong `src/utils/heyetsy_parser.py`) để lọc listing (bỏ video, yêu cầu `total_sold > 5`) → ghi kết quả duy nhất theo `listing_id` vào `captured_data.json` bằng `save_json` (trong `src/models/output.py`).
-- **Yêu cầu**: Chrome đã bật `--remote-debugging-port=9223` và đang mở, giống phần chuẩn bị ở trên.
-
----
-
-## Endpoint chính
-
-### POST `/api/v1/cdp/auto-check-tracking`
-
-**Mục đích**: Nhận danh sách USPS tracking links, trả về trạng thái delivered cho từng shipment.
-
-**Request body (ví dụ)**:
-
-```json
-[
-  {
-    "shipment_id": "123",
-    "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
-  },
-  {
-    "shipment_id": "456",
-    "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858308"
-  }
-]
-```
-
-**Response (ví dụ)**:
-
-```json
-[
-  {
-    "shipment_id": "123",
-    "delivered": true,
-    "delivered_at": "2025-12-13T05:01:00Z"
-  },
-  {
-    "shipment_id": "456",
-    "delivered": false,
-    "delivered_at": null
-  }
-]
-```
-
-Các rule validate, logging, và luồng xử lý được mô tả chi tiết trong `docs/implement.md` và `docs/tdd.md`.
+- **Cách làm**: Script dùng `PlaywrightAutomation.connect_over_cdp` → điều hướng tới URL bạn cung cấp (mặc định là Grok) → giữ Chrome mở để bạn thao tác kiểm tra TM hoặc để các script khác tiếp tục làm việc.
+- **Yêu cầu**: Chrome đã bật `--remote-debugging-port=9224` và đang mở, giống phần chuẩn bị ở trên.
 
 ---
 
@@ -160,7 +121,7 @@ Các rule validate, logging, và luồng xử lý được mô tả chi tiết t
   - Chạy `scripts\setup_windows.bat` để tạo venv, cài dependencies và Playwright.
   - Khởi động Chrome với CDP như hướng dẫn ở trên.
   - Kích hoạt venv: `venv\Scripts\activate`.
-  - Chạy server: `uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5674`.
+  - Chạy server: `uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5675`.
 
 ---
 

@@ -10,7 +10,6 @@ from typing import Dict, Optional, Any, List
 from datetime import datetime
 import stat
 
-from .hidemyacc import HideMyAccManager
 
 
 class ProfileInfoExtractor:
@@ -356,7 +355,6 @@ class ProfileInfoExtractor:
             profile_path / "config.json",
             profile_path / "settings.json",
             profile_path / "fingerprint.json",
-            profile_path / ".hidemyacc" / "config.json",
         ]
         
         for config_path in config_paths:
@@ -585,7 +583,6 @@ def main():
         print("  python3 -m src.utils.get_profile_info profile1 --json")
         print()
         print("Để xem danh sách profiles:")
-        print("  python3 -m src.utils.hidemyacc")
         sys.exit(1)
     
     profile_id = sys.argv[1]

@@ -1,17 +1,14 @@
 """
-FastAPI server đơn giản để làm việc với HideMyAcc
+FastAPI server đơn giản để làm việc với Chrome qua CDP
 
 Mục đích:
-- ✅ Tự động tìm HideMyAcc profile
-- ✅ Tự động khởi động Chrome (Marco/Chrome) với profile đó + CDP
-- ✅ Tự động kết nối Playwright qua CDP
-
-API này KHÔNG cần body đầu vào – chỉ cần gọi endpoint là tự xử lý.
+- ✅ Kết nối tới Chrome đang chạy sẵn qua CDP
+- ✅ Cung cấp API nền tảng để thực hiện các tác vụ tự động hoá (ví dụ: check TM trên Grok)
 
 Cấu hình nhanh (chỉnh trực tiếp trong file cho dễ deploy, không cần .env):
 - CONFIG_API_HOST: host mà Uvicorn sẽ bind (mặc định: 0.0.0.0)
-- CONFIG_API_PORT: port local của API (mặc định: 5674)
-- CONFIG_CDP_PORT: port CDP cho Chrome/Marco (mặc định: 9223)
+- CONFIG_API_PORT: port local của API (mặc định: 5675)
+- CONFIG_CDP_PORT: port CDP cho Chrome (mặc định: 9224)
 """
 # CRITICAL: Set Windows event loop policy FIRST, before any imports
 import sys
@@ -33,10 +30,7 @@ from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel
 import logging
 
-from src.utils.hidemyacc import HideMyAccManager
 from src.core.automation import PlaywrightAutomation
-from src.models import SearchInput
-from src.app.cdp_connection import scrape_etsy_via_cdp
 
 
 # =========================
@@ -45,20 +39,20 @@ from src.app.cdp_connection import scrape_etsy_via_cdp
 
 # Host & port cho API (Uvicorn)
 CONFIG_API_HOST = "0.0.0.0"
-CONFIG_API_PORT = 5674
+CONFIG_API_PORT = 5675
 
-# CDP port cho Chrome/Marco (HideMyAcc)
-CONFIG_CDP_PORT = 9223
+# CDP port cho Chrome
+CONFIG_CDP_PORT = 9224
 
 
 # Setup logging (đơn giản, log ra stdout/terminal)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
+# Initialize FastAPI app (có thể dùng cho nhiều luồng automation khác nhau, ví dụ: check TM trên Grok)
 app = FastAPI(
-    title="HideMyAcc Automation API",
-    description="API đơn giản để khởi động HideMyAcc profile + Chrome/Marco và kết nối Playwright qua CDP",
+    title="CDP Automation API",
+    description="API đơn giản để kết nối Chrome qua CDP và thực hiện các tác vụ automation (ví dụ: check TM trên Grok).",
     version="1.0.0",
 )
 
@@ -66,61 +60,94 @@ app = FastAPI(
 api_router = APIRouter(prefix="/api/v1")
 
 
-class HideMyAccConnectionResponse(BaseModel):
-    """Response cho việc kết nối HideMyAcc profile"""
+# =========================
+# MODELS
+# =========================
+
+
+class OpenUrlRequest(BaseModel):
+    """Body request để mở một URL cụ thể qua CDP."""
+
+    url: str
+
+
+class OpenUrlResponse(BaseModel):
+    """Kết quả khi mở URL qua CDP."""
 
     success: bool
     message: str
-    profile_id: Optional[str] = None
-    profile_name: Optional[str] = None
-    cdp_port: Optional[int] = None
-
-
-# @api_router.post("/hidemyacc/connect", response_model=HideMyAccConnectionResponse)
-# async def connect_hidemyacc_profile() -> HideMyAccConnectionResponse:
-#     # ... existing implementation ...
-#     pass
-
-
-class EtsyScrapeResponse(BaseModel):
-    """Response cho việc crawl Etsy"""
-
-    success: bool
-    message: str
-    count: Optional[int] = 0
+    title: Optional[str] = None
     error: Optional[str] = None
 
 
-@api_router.post("/etsy/scrape", response_model=EtsyScrapeResponse)
-async def scrape_etsy(search_input: SearchInput) -> EtsyScrapeResponse:
-    """
-    Crawl dữ liệu từ Etsy theo keyword và số trang.
-    Yêu cầu Chrome (hoặc HideMyAcc profile) đã được khởi động với CDP port 9223.
-    """
-    logger.info(f"Nhận yêu cầu scrape Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
+#
+# =========================
+# HELPERS
+# =========================
+
+
+async def _open_url_via_cdp(target_url: str) -> OpenUrlResponse:
+    """Helper: mở URL qua CDP và trả về OpenUrlResponse."""
+    target_url = target_url.strip()
+    if not target_url:
+        raise HTTPException(status_code=400, detail="URL không được để trống")
+
+    logger.info(f"[CDP] Yêu cầu mở URL: {target_url}")
+
+    automation = PlaywrightAutomation()
+    cdp_endpoint = f"http://localhost:{CONFIG_CDP_PORT}"
 
     try:
-        result = await scrape_etsy_via_cdp(
-            keyword=search_input.keyword, pages=search_input.pages
+        # Kết nối tới Chrome đang chạy sẵn
+        logger.info(f"[CDP] Kết nối tới Chrome qua CDP: {cdp_endpoint}")
+        await automation.connect_over_cdp(cdp_endpoint)
+
+        # Điều hướng tới URL
+        await automation.navigate(target_url)
+        title = await automation.page.title()
+        logger.info(f"[CDP] Đã mở URL, title: {title}")
+
+        # Không đóng Chrome – chỉ detach Playwright
+        await automation.detach()
+
+        return OpenUrlResponse(
+            success=True,
+            message="Đã mở URL trong Chrome qua CDP thành công.",
+            title=title,
         )
 
-        if result.get("success"):
-            return EtsyScrapeResponse(
-                success=True,
-                message=result.get("message", "Crawl thành công"),
-                count=result.get("count", 0),
-            )
-        else:
-            return EtsyScrapeResponse(
-                success=False,
-                message="Crawl thất bại",
-                error=result.get("error"),
-            )
     except Exception as e:
-        logger.exception(f"Lỗi khi thực hiện scrape Etsy: {e}")
-        return EtsyScrapeResponse(
-            success=False, message="Lỗi server khi thực hiện scrape", error=str(e)
+        logger.exception(f"[CDP] Lỗi khi mở URL qua CDP: {e}")
+        # Cố gắng detach nếu có thể
+        try:
+            await automation.detach()
+        except Exception:
+            pass
+
+        return OpenUrlResponse(
+            success=False,
+            message="Không thể mở URL trong Chrome qua CDP.",
+            error=str(e),
         )
+
+
+# =========================
+# ROUTES
+# =========================
+
+
+@api_router.post("/cdp/auto-check-tm", response_model=OpenUrlResponse)
+async def auto_check_tm_api(payload: OpenUrlRequest) -> OpenUrlResponse:
+    """
+    API chuyên dụng cho luồng **auto-check TM**:
+
+    - Nhận URL (ví dụ: URL Grok với query TM cụ thể)
+    - Mở trong Chrome (đang chạy với CDP)
+    - Trả lại thông tin cơ bản (title, trạng thái success) để phía client/worker xử lý tiếp.
+
+    Lưu ý: API này KHÔNG tự đọc kết quả TM, mà chỉ đảm bảo mở đúng URL trong session Chrome.
+    """
+    return await _open_url_via_cdp(payload.url)
 
 
 # Include API router vào app

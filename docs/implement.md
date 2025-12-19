@@ -49,7 +49,7 @@ src/
    - `shipment_id` không null / rỗng
    - `tracking_link` không rỗng
 3. Với từng shipment:
-   - Gọi `connect_to_chrome_via_cdp(url=tracking_link, cdp_endpoint="http://localhost:9223", wait_time=2)`
+   - Gọi `connect_to_chrome_via_cdp(url=tracking_link, cdp_endpoint="http://localhost:9224", wait_time=2)`
    - Đọc kết quả `{ success, is_delivered, delivered_date, ... }`
    - Chuẩn hóa về `ShipmentTrackingResponse` `{ shipment_id, delivered, delivered_at }`
 4. Trả về danh sách kết quả theo đúng thứ tự input.
@@ -58,8 +58,8 @@ Chi tiết request/response và ví dụ gọi đã được mô tả đầy đ�
 
 ## 5. Kết nối CDP (tóm tắt)
 
-- Chrome phải được khởi động với `--remote-debugging-port=9223`
-- `PlaywrightAutomation.connect_over_cdp` nhận endpoint (ví dụ `http://localhost:9223`), tạo `browser`, `context`, `page`
+- Chrome phải được khởi động với `--remote-debugging-port=9224`
+- `PlaywrightAutomation.connect_over_cdp` nhận endpoint (ví dụ `http://localhost:9224`), tạo `browser`, `context`, `page`
 - `connect_to_chrome_via_cdp` dùng `PlaywrightAutomation` để:
   - Điều hướng tới URL
   - Chờ trang load

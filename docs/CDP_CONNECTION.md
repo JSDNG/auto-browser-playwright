@@ -15,24 +15,24 @@ Chrome cần được khởi động với flag `--remote-debugging-port` để 
 
 #### macOS:
 ```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9224
 ```
 
 #### Linux:
 ```bash
-google-chrome --remote-debugging-port=9223
+google-chrome --remote-debugging-port=9224
 # hoặc
-chromium --remote-debugging-port=9223
+chromium --remote-debugging-port=9224
 ```
 
 #### Windows:
 ```bash
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-debug"
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9224 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 ### Bước 2: Xác nhận CDP đang chạy
 
-Mở trình duyệt khác và truy cập: `http://localhost:9223/json`
+Mở trình duyệt khác và truy cập: `http://localhost:9224/json`
 
 Bạn sẽ thấy JSON list các tab/windows đang mở. Nếu thấy JSON này nghĩa là CDP đã hoạt động.
 
@@ -44,7 +44,7 @@ from src.core.automation import PlaywrightAutomation
 automation = PlaywrightAutomation()
 
 # Kết nối với Chrome đang chạy qua CDP
-await automation.connect_over_cdp("http://localhost:9223")
+await automation.connect_over_cdp("http://localhost:9224")
 
 # Sử dụng như bình thường
 await automation.navigate("https://example.com")
@@ -52,12 +52,12 @@ await automation.navigate("https://example.com")
 
 ## Lưu ý quan trọng
 
-1. **Port mặc định**: 9223 là port phổ biến, nhưng bạn có thể dùng port khác
+1. **Port mặc định**: 9224 là port phổ biến, nhưng bạn có thể dùng port khác
 2. **Chỉ một Chrome instance**: Mỗi port chỉ có thể dùng cho một Chrome instance
 3. **Security**: CDP không có authentication mặc định, chỉ nên dùng trên localhost
 4. **Format endpoint**: 
-- `http://localhost:9223` (Playwright tự convert sang WebSocket)
-- `ws://localhost:9223` (WebSocket trực tiếp)
+- `http://localhost:9224` (Playwright tự convert sang WebSocket)
+- `ws://localhost:9224` (WebSocket trực tiếp)
 
 ## Ví dụ đầy đủ
 
@@ -76,8 +76,8 @@ Luồng chính: kết nối Chrome đang mở qua CDP → duyệt các trang tì
 
 ### Lỗi: "Target closed" hoặc "Connection refused"
 - Kiểm tra Chrome đã khởi động với `--remote-debugging-port` chưa
-- Kiểm tra port có đúng không (mặc định 9223)
-- Thử truy cập `http://localhost:9223/json` để xác nhận
+- Kiểm tra port có đúng không (mặc định 9224)
+- Thử truy cập `http://localhost:9224/json` để xác nhận
 
 ### Lỗi: "Protocol error"
 - Đảm bảo Chrome version tương thích với Playwright

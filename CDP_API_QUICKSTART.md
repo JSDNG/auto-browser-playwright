@@ -4,7 +4,7 @@
 
 **macOS:**
 ```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9224
 ```
 
 **Hoặc dùng script:**
@@ -15,7 +15,7 @@
 ## Bước 2: Chạy API Server
 
 ```bash
-uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5674
+uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5675
 ```
 
 ## Bước 3: Gọi API
@@ -23,7 +23,7 @@ uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5674
 ### Kiểm tra nhiều shipments (Batch)
 
 ```bash
-curl -X POST "http://localhost:5674/api/v1/cdp/auto-check-tracking" \
+curl -X POST "http://localhost:5675/api/v1/cdp/auto-check-tracking" \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -35,7 +35,7 @@ curl -X POST "http://localhost:5674/api/v1/cdp/auto-check-tracking" \
 
 ### Xem API Documentation
 
-Mở trình duyệt: `http://localhost:5674/docs`
+Mở trình duyệt: `http://localhost:5675/docs`
 
 ## Xem hướng dẫn chi tiết
 
