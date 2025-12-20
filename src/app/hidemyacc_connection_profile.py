@@ -25,17 +25,16 @@ from urllib.parse import quote_plus
 
 async def launch_hidemyacc_profile_for_api(
     profile_id: str = None,
-    use_command_line_config: bool = False,
     cdp_port: int = 9223,
     proxy_server: str = None,
     proxy_username: str = None,
     proxy_password: str = None
 ) -> tuple:
     """
-    Launch HideMyAcc profile cho API server - chỉ launch, không scrape.
+    Launch HideMyAcc profile cho API server - chỉ launch, KHÔNG đóng profile.
     
     Returns: (automation, profile_info) hoặc (None, None) nếu lỗi.
-    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
+    Profile sẽ được giữ mở - không tự động đóng.
     """
     print("=" * 60)
     print("Launch HideMyAcc Profile cho API")
@@ -66,98 +65,105 @@ async def launch_hidemyacc_profile_for_api(
     print(f"Profile path: {profile['user_data_dir']}")
     print()
     
-    # Cấu hình từ command line
-    # Luôn sử dụng cấu hình này khi use_command_line_config=True
-    if use_command_line_config:
-        # Tự động tìm Marco browser mới nhất trong ~/.hidemyacc/browser/
-        # Marco browser là browser được HideMyAcc cung cấp, có fingerprinting tốt hơn Chrome thường
-        executable_path = manager._find_marco_browser()
-        if executable_path:
-            print(f"✓ Tìm thấy Marco browser: {executable_path}")
-        else:
-            print("⚠️  Không tìm thấy Marco browser, sẽ dùng Chrome mặc định")
+    # Kiểm tra xem CDP đã chạy chưa (profile đã mở)
+    print(f"Đang kiểm tra CDP port {cdp_port}...")
+    if manager.check_cdp_running(cdp_port):
+        print(f"✓ CDP đã chạy tại port {cdp_port} - profile đã mở!")
+        print("  Sẽ kết nối với Chrome đang chạy thay vì launch mới.")
+        print()
         
-        # Cấu hình proxy: chỉ dùng proxy từ API request, không dùng default hardcode
-        # Proxy được truyền vào từ API request body (optional)
-        proxy = None
-        if proxy_server:
-            # Có proxy server từ API - phải có đầy đủ username và password
-            # Format: {"server": "http://host:port", "username": "...", "password": "..."}
-            proxy = {
-                "server": proxy_server,
-                "username": proxy_username,
-                "password": proxy_password
+        # Kết nối với Chrome đang chạy qua CDP
+        automation = PlaywrightAutomation(headless=False)
+        try:
+            cdp_endpoint = f"http://localhost:{cdp_port}"
+            print(f"Đang kết nối với Chrome qua CDP tại {cdp_endpoint}...")
+            await automation.connect_over_cdp(cdp_endpoint)
+            print("✓ Đã kết nối thành công với Chrome đang chạy!")
+            print()
+            
+            profile_info = {
+                "profile_id": profile['name'],
+                "profile_name": profile.get('name', profile['name']),
+                "user_data_dir": profile['user_data_dir'],
+                "cdp_port": cdp_port,
+                "reused": True  # Đánh dấu là đã tái sử dụng
             }
-            print(f"✓ Proxy với authentication: {proxy_server}")
-        else:
-            # Không có proxy từ API - không dùng proxy
-            # Browser sẽ dùng connection trực tiếp (không qua proxy)
-            print("✓ Không sử dụng proxy")
-        
-        hidemyacc_data = "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"
-        
-        # Extra args từ command line configuration
-        # --hidemyacc-data là arg riêng của HideMyAcc, cần thiết để kết nối đúng profile
-        # hidemyacc_data là encoded string chứa thông tin profile configuration
-        # --remote-debugging-port cho phép kết nối CDP (nếu cần debug)
-        extra_args = [
-            "--lang=en-US",
-            "--disable-encryption",
-            "--restore-last-session",
-            f"--hidemyacc-data={hidemyacc_data}",
-            "--disable-features=ExtensionsToolbarMenu,ChromeLabs,ReadLater,TriggerNetworkDataMigration,ChromeWhatsNewUI,ViewportHeightClientHintHeader",
-            "--flag-switches-begin",
-            "--flag-switches-end",
-            "--origin-trial-disabled-features=CanvasTextNg|WebAssemblyCustomDescriptors",
-            f"--remote-debugging-port={cdp_port}",  # CDP port để có thể kết nối qua CDP nếu cần
-        ]
-        
-        print("✓ Sử dụng cấu hình từ command line")
-        print(f"  Executable: {executable_path}")
-        print(f"  Proxy: {proxy['server'] if proxy else 'None'}")
-        print(f"  CDP Port: {cdp_port}")
-        print()
+            
+            return automation, profile_info
+            
+        except Exception as e:
+            print(f"❌ Lỗi khi kết nối với Chrome qua CDP: {e}")
+            print("  Sẽ thử launch mới...")
+            print()
+            import traceback
+            traceback.print_exc()
+            # Tiếp tục với launch mới nếu kết nối thất bại
+    
+    # Nếu CDP chưa chạy hoặc kết nối thất bại, launch mới
+    print("CDP chưa chạy hoặc không thể kết nối - sẽ launch Chrome mới...")
+    print()
+    
+    # Tự động tìm Marco browser
+    executable_path = manager._find_marco_browser()
+    if executable_path:
+        print(f"✓ Tìm thấy Marco browser: {executable_path}")
     else:
-        executable_path = manager._find_marco_browser()
-        proxy = None
-        extra_args = [
-            f"--remote-debugging-port={cdp_port}",  # Thêm CDP port
-        ]
-        
-        if executable_path:
-            print(f"✓ Tìm thấy Marco browser: {executable_path}")
-        else:
-            print("⚠️  Không tìm thấy Marco browser, sẽ sử dụng Chrome mặc định")
-        print(f"  CDP Port: {cdp_port}")
-        print()
+        print("⚠️  Không tìm thấy Marco browser, sẽ dùng Chrome mặc định")
+    
+    # Cấu hình proxy (nếu có)
+    proxy = None
+    if proxy_server:
+        proxy = {
+            "server": proxy_server,
+            "username": proxy_username,
+            "password": proxy_password
+        }
+        print(f"✓ Proxy với authentication: {proxy_server}")
+    else:
+        print("✓ Không sử dụng proxy")
+    
+    hidemyacc_data = "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"
+    
+    extra_args = [
+        "--lang=en-US",
+        "--disable-encryption",
+        "--restore-last-session",
+        f"--hidemyacc-data={hidemyacc_data}",
+        "--disable-features=ExtensionsToolbarMenu,ChromeLabs,ReadLater,TriggerNetworkDataMigration,ChromeWhatsNewUI,ViewportHeightClientHintHeader",
+        "--flag-switches-begin",
+        "--flag-switches-end",
+        "--origin-trial-disabled-features=CanvasTextNg|WebAssemblyCustomDescriptors",
+        f"--remote-debugging-port={cdp_port}",
+    ]
+    
+    print(f"✓ CDP Port: {cdp_port}")
+    print()
     
     # Launch Playwright với profile
-    # headless=False để hiển thị browser (có thể debug và xem quá trình)
     automation = PlaywrightAutomation(headless=False)
     
     try:
         print("Đang launch Playwright với HideMyAcc profile...")
         print()
         
-        # Launch browser với profile qua user-data-dir
-        # Playwright sẽ sử dụng profile có sẵn thay vì tạo profile mới
-        # require_executable=True để đảm bảo dùng đúng Marco browser, không fallback Chromium
         await automation.launch_with_profile(
             profile['user_data_dir'],
             executable_path=executable_path,
             proxy=proxy,
             extra_args=extra_args,
-            require_executable=True  # Bắt buộc dùng đúng executable để không fallback Chromium mặc định
+            require_executable=True
         )
         
         print("✓ Đã launch thành công!")
+        print("⚠️  Profile sẽ KHÔNG tự động đóng - giữ mở để sử dụng.")
         print()
         
         profile_info = {
             "profile_id": profile['name'],
             "profile_name": profile.get('name', profile['name']),
             "user_data_dir": profile['user_data_dir'],
-            "cdp_port": cdp_port
+            "cdp_port": cdp_port,
+            "reused": False  # Đánh dấu là launch mới
         }
         
         return automation, profile_info

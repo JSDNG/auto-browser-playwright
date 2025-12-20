@@ -96,7 +96,6 @@ async def scrape_etsy_with_profile(
     keyword: str = "t-shirt",
     pages: int = 5,
     profile_id: str = None,
-    use_command_line_config: bool = True,
     proxy_server: str = None,
     proxy_username: str = None,
     proxy_password: str = None,
@@ -122,7 +121,6 @@ async def scrape_etsy_with_profile(
         logger.info("Đang launch HideMyAcc profile...")
         automation, profile_info = await launch_hidemyacc_profile_for_api(
             profile_id=profile_id,
-            use_command_line_config=use_command_line_config,
             cdp_port=CONFIG_CDP_PORT,
             proxy_server=proxy_server,
             proxy_username=proxy_username,
@@ -135,7 +133,10 @@ async def scrape_etsy_with_profile(
                 "error": "Không thể launch HideMyAcc profile"
             }
         
-        logger.info(f"✓ Đã launch profile: {profile_info['profile_name']}")
+        if profile_info.get('reused', False):
+            logger.info(f"✓ Đã kết nối với profile đang chạy: {profile_info['profile_name']} (tái sử dụng Chrome hiện có)")
+        else:
+            logger.info(f"✓ Đã launch profile mới: {profile_info['profile_name']}")
         
         # Bước 2: Mở Etsy và thực hiện search
         # - Navigate đến từng trang Etsy search (page 1 đến page N)
@@ -206,7 +207,7 @@ async def scrape_etsy_with_profile(
         
         # Detach automation (không đóng browser)
         # Browser sẽ được giữ mở để có thể tiếp tục sử dụng hoặc debug
-        await automation.detach()
+        #await automation.detach()
         
         return {
             "success": True,
@@ -275,8 +276,7 @@ async def scrape_etsy_hidemyacc(search_input: HideMyAccSearchInput) -> EtsyScrap
         result = await scrape_etsy_with_profile(
             keyword=search_input.keyword,
             pages=search_input.pages,
-            profile_id=search_input.profile_id,  # Bắt buộc phải có
-            use_command_line_config=True,  # Sử dụng cấu hình từ command line
+            profile_id=search_input.profile_id,
             proxy_server=search_input.proxy_server,
             proxy_username=search_input.proxy_username,
             proxy_password=search_input.proxy_password
