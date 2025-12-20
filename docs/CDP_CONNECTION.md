@@ -65,12 +65,21 @@ Xem file `src/app/cdp_connection.py` để có ví dụ hoàn chỉnh.
 
 ### Ví dụ script HeyEtsy (CLI)
 
-```
+```bash
 # keyword mặc định "t-shirt", pages mặc định 5
-python src/app/cdp_connection.py "<keyword>" <pages>
+python src/app/cdp_connection.py "handmade bag" 5
 ```
 
-Luồng chính: kết nối Chrome đang mở qua CDP → duyệt các trang tìm kiếm Etsy → trích overlay HeyEtsy bằng `extract_heyetsy_data` (bỏ listing video, yêu cầu `total_sold > 5`) → lưu kết quả duy nhất theo `listing_id` vào `captured_data.json` bằng `save_json`.
+**Luồng chính:**
+1. Kết nối Chrome đang mở qua CDP tại `localhost:9223`
+2. Duyệt các trang tìm kiếm Etsy (page 1 đến page N)
+3. Extract HTML body (loại bỏ script/style tags)
+4. Trích dữ liệu HeyEtsy bằng `extract_heyetsy_data` từ `src/utils/heyetsy_parser.py`
+5. Lọc và deduplicate theo `listing_id`
+6. Gửi dữ liệu tới webhook: `https://n8n.supover.com/webhook/crawler-etsy`
+7. Detach automation (giữ browser mở)
+
+**Lưu ý:** Dữ liệu được gửi tới webhook, không lưu file local. Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết.
 
 ## Troubleshooting
 

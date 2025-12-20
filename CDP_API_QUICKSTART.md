@@ -20,17 +20,27 @@ uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5674
 
 ## Bước 3: Gọi API
 
-### Kiểm tra nhiều shipments (Batch)
+### Etsy Scraping (CDP Connection)
 
 ```bash
-curl -X POST "http://localhost:5674/api/v1/cdp/auto-check-tracking" \
+curl -X POST "http://localhost:5674/api/v1/etsy/scrape" \
   -H "Content-Type: application/json" \
-  -d '[
-    {
-        "shipment_id": "123",
-        "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9400150105794041827256"
-    }
-  ]'
+  -d '{
+    "keyword": "handmade bag",
+    "pages": 2
+  }'
+```
+
+### Etsy Scraping (HideMyAcc Profile)
+
+```bash
+curl -X POST "http://localhost:5674/api/v1/etsy/scrape_hidemyacc" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "profile_id": "hma_xxx",
+    "keyword": "handmade bag",
+    "pages": 2
+  }'
 ```
 
 ### Xem API Documentation
@@ -39,4 +49,5 @@ Mở trình duyệt: `http://localhost:5674/docs`
 
 ## Xem hướng dẫn chi tiết
 
-Xem file: `docs/API_GUIDE.md`
+- **USPS Tracking**: Xem `docs/API_GUIDE.md`
+- **Etsy Scraping**: Xem `docs/ETSY_SCRAPING_API.md`

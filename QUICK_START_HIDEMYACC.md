@@ -38,16 +38,20 @@ Kết quả sẽ hiển thị danh sách profiles, ví dụ:
 Chỉ cần chạy một lệnh duy nhất:
 
 ```bash
-python3 src/app/hidemyacc_connection.py --profile profile1
- python3 src/app/hidemyacc_connection_profile.py --profile hma_6898af88effa52a76ecbe4ec --use-command-line
+# Chạy với Etsy scraping
+python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx --keyword "handmade bag" --pages 2
+
+# Hoặc chỉ launch profile (không scrape)
+python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx --no-proxy
 ```
 
 **Code sẽ tự động:**
-1. ✅ Tìm profile `profile1` trong HideMyAcc
-2. ✅ Kiểm tra Chrome có đang chạy với CDP chưa
-3. ✅ Nếu chưa → Tự động khởi động Chrome với profile + CDP
-4. ✅ Kết nối Playwright với Chrome
-5. ✅ Mở trang Google làm ví dụ
+1. ✅ Tìm profile trong HideMyAcc (`~/.hidemyacc/profiles/`)
+2. ✅ Tự động tìm Marco browser executable mới nhất
+3. ✅ Launch Playwright với profile qua `user-data-dir`
+4. ✅ Navigate đến Etsy và scrape dữ liệu (nếu có keyword/pages)
+5. ✅ Gửi dữ liệu tới webhook n8n
+6. ✅ Giữ browser mở (detach, không close)
 
 **Xong!** Browser sẽ mở và bạn có thể thấy nó đang hoạt động.
 
@@ -57,18 +61,18 @@ python3 src/app/hidemyacc_connection.py --profile profile1
 
 Sau khi đã test thành công, bạn có thể dùng trong code:
 
-### Ví dụ 1: Kết nối và automation đơn giản
+### Ví dụ 1: Launch profile và automation đơn giản
 
 ```python
 import asyncio
-from src.app.hidemyacc_connection import connect_to_hidemyacc_profile
+from src.app.hidemyacc_connection_profile import launch_hidemyacc_profile_for_api
 
 async def main():
-    # Tự động tìm profile, khởi động Chrome và kết nối
-    automation = await connect_to_hidemyacc_profile(
-        'profile1',      # Tên profile
-        cdp_port=9223,   # Port CDP
-        auto_launch=True # Tự động khởi động (mặc định True)
+    # Launch HideMyAcc profile và lấy automation object
+    automation, profile_info = await launch_hidemyacc_profile_for_api(
+        profile_id='hma_xxx',  # Profile ID
+        use_command_line_config=True,
+        cdp_port=9223
     )
     
     if automation:
@@ -83,7 +87,7 @@ async def main():
         # Detach (KHÔNG đóng browser)
         await automation.detach()
     else:
-        print("Không thể kết nối")
+        print("Không thể launch profile")
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -93,10 +97,13 @@ if __name__ == "__main__":
 
 ```python
 import asyncio
-from src.app.hidemyacc_connection import connect_to_hidemyacc_profile
+from src.app.hidemyacc_connection_profile import launch_hidemyacc_profile_for_api
 
 async def main():
-    automation = await connect_to_hidemyacc_profile('profile1')
+    automation, profile_info = await launch_hidemyacc_profile_for_api(
+        profile_id='hma_xxx',
+        use_command_line_config=True
+    )
     
     if automation:
         captured_data = []
@@ -137,17 +144,20 @@ if __name__ == "__main__":
 ## Các tùy chọn khi chạy script
 
 ```bash
-# Chỉ định profile
-python3 src/app/hidemyacc_connection.py --profile profile1
+# Chỉ định profile và scrape Etsy
+python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx --keyword "handmade bag" --pages 5
 
-# Chỉ định port khác (nếu port 9222 đã dùng)
-python3 src/app/hidemyacc_connection.py --profile profile1 --port 9223
+# Chỉ launch profile, không scrape
+python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx
 
-# KHÔNG tự động khởi động (nếu Chrome đã chạy sẵn)
-python3 src/app/hidemyacc_connection.py --profile profile1 --no-auto-launch
+# Bật proxy (với credentials mặc định)
+python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx --with-proxy
+
+# Tắt proxy
+python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx --no-proxy
 
 # Xem help
-python3 src/app/hidemyacc_connection.py --help
+python3 src/app/hidemyacc_connection_profile.py --help
 ```
 
 ---
@@ -208,7 +218,7 @@ python3 src/app/hidemyacc_connection.py --help
 
 3. **Chạy script (tự động mọi thứ):**
    ```bash
-   python3 src/app/hidemyacc_connection.py --profile YOUR_PROFILE_NAME
+   python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx --keyword "handmade bag" --pages 2
    ```
 
 4. **Browser sẽ mở tự động** với HideMyAcc profile
@@ -221,8 +231,9 @@ python3 src/app/hidemyacc_connection.py --help
 
 - ⚠️ **Mỗi profile chỉ nên chạy một lần** - Nếu profile đã chạy, đóng Chrome trước khi chạy lại
 - ✅ **Detach thay vì close** - Dùng `automation.detach()` thay vì `automation.close()` để giữ browser mở
-- ✅ **Port khác nhau** - Nếu muốn chạy nhiều profile cùng lúc, dùng port khác nhau (9222, 9223, 9224...)
+- ✅ **Marco browser** - Tự động tìm Marco browser mới nhất trong `~/.hidemyacc/browser/`
 - ✅ **Profile đã cấu hình** - Fingerprint, proxy, cookies trong profile sẽ được sử dụng tự động
+- ✅ **Webhook** - Dữ liệu Etsy được tự động gửi tới webhook n8n sau khi scrape xong
 
 ---
 
@@ -230,13 +241,13 @@ python3 src/app/hidemyacc_connection.py --help
 
 ```bash
 # 1. Xem profiles
-python3 -m src.utils.hidemyacc
+python3 -c "from src.utils.hidemyacc import HideMyAccManager; print(HideMyAccManager().find_profiles())"
 
-# 2. Chạy với profile đầu tiên (tự động)
-python3 src/app/hidemyacc_connection.py
+# 2. Chạy với profile cụ thể và scrape Etsy
+python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx --keyword "handmade bag" --pages 2
 
-# 3. Hoặc chỉ định profile cụ thể
-python3 src/app/hidemyacc_connection.py --profile my_profile
+# 3. Hoặc chỉ launch profile (không scrape)
+python3 src/app/hidemyacc_connection_profile.py --profile hma_xxx
 ```
 
 **Xong! Browser sẽ mở và sẵn sàng cho automation.** 🚀

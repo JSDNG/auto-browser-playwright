@@ -1,4 +1,4 @@
-## Hướng dẫn triển khai API CDP trên Windows với domain ngoài
+## Hướng dẫn triển khai API trên Windows với domain ngoài
 
 Tài liệu này hướng dẫn bạn biến `api_server.py` thành dịch vụ Windows chạy nền (không cần mở VS Code) và public qua domain ngoài.
 
@@ -10,8 +10,14 @@ Tài liệu này hướng dẫn bạn biến `api_server.py` thành dịch vụ 
   - FastAPI + Uvicorn.
   - Lắng nghe trên `0.0.0.0:5674` (xem cuối file):
     - `uvicorn.run(app, host="0.0.0.0", port=5674)`
+  - Cung cấp các endpoints:
+    - `/api/v1/etsy/scrape` - Etsy scraping qua CDP
+    - `/api/v1/etsy/scrape_hidemyacc` - Etsy scraping với HideMyAcc profile
 - **Chrome**:
-  - Phải khởi động với `--remote-debugging-port=9223`.
+  - Phải khởi động với `--remote-debugging-port=9223` (cho CDP connection endpoints).
+- **HideMyAcc** (nếu dùng endpoint HideMyAcc):
+  - Cài đặt HideMyAcc application
+  - Profiles tại `~/.hidemyacc/profiles/`
 - **Domain ngoài**:
   - Domain trỏ về IP máy/server.
   - Reverse proxy (Nginx/Caddy/IIS/Cloudflare Tunnel/ngrok) forward request đến `http://127.0.0.1:5674`.
@@ -33,8 +39,8 @@ if platform.system() == "Windows":
 
 ```python
 app = FastAPI(
-    title="CDP Connection API",
-    description="API để kết nối với Chrome qua CDP và kiểm tra trạng thái delivered",
+    title="HideMyAcc Automation API",
+    description="API đơn giản để khởi động HideMyAcc profile + Chrome/Marco và kết nối Playwright qua CDP",
     version="1.0.0"
 )
 
@@ -105,7 +111,12 @@ Nếu có lỗi, sửa cho chạy ổn **trước khi** triển khai reverse pro
 
 ## 4. Khởi động Chrome với CDP (remote debugging)
 
-API `check_delivery_status` yêu cầu Chrome chạy với cờ `--remote-debugging-port=9223`:
+**Lưu ý:** Chỉ cần thiết nếu bạn sử dụng endpoint:
+- `/api/v1/etsy/scrape` - Etsy scraping qua CDP
+
+**Không cần thiết** nếu chỉ dùng `/api/v1/etsy/scrape_hidemyacc` (HideMyAcc tự động launch browser).
+
+### 4.1. Khởi động Chrome với CDP
 
 Ví dụ trên Windows:
 
@@ -125,6 +136,17 @@ Gợi ý:
 - Nếu bạn muốn Chrome cũng chạy “nền” trên server, có thể:
   - Dùng Task Scheduler để tự start Chrome khi login.
   - Hoặc tạo một service riêng cho Chrome bằng công cụ phù hợp khác (cao cấp hơn, chỉ làm khi cần).
+
+### 4.2. Cài đặt HideMyAcc (nếu dùng endpoint HideMyAcc)
+
+Nếu bạn sử dụng endpoint `/api/v1/etsy/scrape_hidemyacc`:
+
+1. Cài đặt HideMyAcc application trên Windows
+2. Tạo profiles trong HideMyAcc
+3. Profiles sẽ được lưu tại: `C:\Users\<username>\.hidemyacc\profiles\`
+4. Marco browser sẽ được tự động tìm trong: `C:\Users\<username>\.hidemyacc\browser\`
+
+Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về HideMyAcc endpoints.
 
 ---
 
@@ -274,18 +296,30 @@ curl http://localhost/docs
 
 - `http://127.0.0.1:5674/docs` trên server:
   - Nếu **OK** ở đây nhưng domain ngoài không được → lỗi ở phần reverse proxy / DNS.
-- Gửi request mẫu đến endpoint:
+  - Swagger UI sẽ hiển thị tất cả endpoints: USPS tracking và Etsy scraping
 
-```json
-POST /api/v1/cdp/auto-check-tracking
-[
-  {
-    "shipment_id": "123",
-    "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
-  }
-]
+- **Test Etsy Scraping - CDP Connection:**
+
+```bash
+POST /api/v1/etsy/scrape
+{
+  "keyword": "handmade bag",
+  "pages": 2
+}
 ```
--
+
+- **Test Etsy Scraping - HideMyAcc Profile:**
+
+```bash
+POST /api/v1/etsy/scrape_hidemyacc
+{
+  "profile_id": "hma_xxx",
+  "keyword": "handmade bag",
+  "pages": 2
+}
+```
+
+Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về Etsy scraping endpoints.
 
 ### 8.2. Log & lỗi
 
@@ -306,27 +340,51 @@ Bạn có thể:
 
 ### 8.3. Tối ưu hiệu suất
 
-- Đảm bảo Chrome chạy ở chế độ tối ưu (bật headless nếu phù hợp, nếu code Playwright/ CDP hỗ trợ).
-- Giảm `wait_time` nếu không cần chờ lâu:
+- **Chrome/CDP endpoints:**
+  - Đảm bảo Chrome chạy ở chế độ tối ưu (bật headless nếu phù hợp, nếu code Playwright/CDP hỗ trợ).
+  - Giảm thời gian chờ nếu không cần chờ lâu (hiện tại Etsy scraping chờ 10 giây mỗi trang).
 
-```python
-wait_time = 2
-```
+- **HideMyAcc endpoints:**
+  - Browser được launch tự động, không cần Chrome chạy trước.
+  - Timeout nên đặt cao hơn (khuyến nghị 600 giây) vì cần thời gian launch browser.
 
-- Nếu lượng request lớn:
+- **Nếu lượng request lớn:**
   - Xem xét chạy nhiều instance service trên các port khác nhau rồi load balance.
-  - Hoặc tối ưu logic trong `connect_to_chrome_via_cdp`.
+  - Hoặc tối ưu logic trong `scrape_etsy_via_cdp` và `scrape_etsy_with_profile`.
+  - Lưu ý: Mỗi request xử lý tuần tự, không song song.
 
 ---
 
 ## 8. Tóm tắt quy trình triển khai
 
-1. Cài Python + tạo venv + `pip install -r requirements.txt`.
-2. Chạy API bằng `start_auto_check_tracking.bat` → truy cập `http://127.0.0.1:5674/docs` để kiểm tra.
-3. Khởi động Chrome với `--remote-debugging-port=9223`.
-4. Mở firewall cho port `5674` (nếu cần).
-5. Cấu hình domain:
-   - DNS trỏ về IP server.
-   - Reverse proxy (Nginx/IIS/Caddy) hoặc Cloudflare Tunnel/ngrok forward đến `http://127.0.0.1:5674`.
-6. Kiểm tra `http(s)://api.yourdomain.com/docs` và test gọi API từ bên ngoài.
+1. **Cài đặt môi trường:**
+   - Cài Python + tạo venv + `pip install -r requirements.txt`
+   - Cài Playwright browsers: `python -m playwright install chromium`
+   - (Tùy chọn) Cài HideMyAcc nếu dùng endpoint HideMyAcc
+
+2. **Chạy API:**
+   - Chạy API bằng `start_auto_check_tracking.bat` → truy cập `http://127.0.0.1:5674/docs` để kiểm tra
+   - Hoặc chạy với uvicorn: `uvicorn src.app.api_server:app --host 0.0.0.0 --port 5674`
+
+3. **Chuẩn bị browser (nếu cần):**
+   - **CDP endpoints:** Khởi động Chrome với `--remote-debugging-port=9223`
+   - **HideMyAcc endpoints:** Không cần, tự động launch
+
+4. **Mở firewall:**
+   - Mở firewall cho port `5674` (nếu cần)
+
+5. **Cấu hình domain:**
+   - DNS trỏ về IP server
+   - Reverse proxy (Nginx/IIS/Caddy) hoặc Cloudflare Tunnel/ngrok forward đến `http://127.0.0.1:5674`
+
+6. **Kiểm tra:**
+   - Truy cập `http(s)://api.yourdomain.com/docs` và test gọi API từ bên ngoài
+   - Test các endpoints: USPS tracking, Etsy scraping (CDP và HideMyAcc)
+
+## 9. Tài liệu tham khảo
+
+- **Etsy Scraping API:** Xem `docs/ETSY_SCRAPING_API.md`
+- **CDP Connection:** Xem `docs/CDP_CONNECTION.md`
+- **API Guide:** Xem `docs/API_GUIDE.md`
+- **HideMyAcc Quick Start:** Xem `QUICK_START_HIDEMYACC.md`
 

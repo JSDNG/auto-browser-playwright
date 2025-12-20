@@ -1,14 +1,11 @@
-r"""
-Kết nối Playwright với Chrome đang chạy qua CDP
+"""
+Module kết nối Playwright với Chrome đang chạy qua CDP để scrape Etsy.
 
-Hướng dẫn sử dụng:
-1. Khởi động Chrome với CDP:
-   macOS: /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
-   Linux: google-chrome --remote-debugging-port=9223
-   Windows: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9223
+Sử dụng:
+- CLI: python3 src/app/cdp_connection.py [keyword] [pages]
+- API: Import hàm scrape_etsy_via_cdp() trong api_server.py
 
-2. Chạy script này:
-   python3 src/app/cdp_connection.py
+Xem docs/ETSY_SCRAPING_API.md và docs/CDP_CONNECTION.md để biết chi tiết.
 """
 import asyncio
 import json
@@ -47,8 +44,10 @@ def _post_json(webhook_url: str, payload: bytes):
 
 async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
     """
-    Core logic to scrape Etsy data and send to webhook.
-    Can be called from CLI or from FastAPI.
+    Scrape dữ liệu Etsy qua CDP connection.
+    
+    Yêu cầu Chrome đã chạy với --remote-debugging-port=9223.
+    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
     """
     search_input = SearchInput(keyword=keyword, pages=pages)
     print("=" * 60)
@@ -60,6 +59,8 @@ async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
 
     try:
         # Kết nối với Chrome đang chạy qua CDP
+        # CDP endpoint mặc định: http://localhost:9223
+        # Chrome phải được khởi động trước với --remote-debugging-port=9223
         cdp_url = "http://localhost:9223"
         print(f"Đang kết nối với Chrome qua CDP tại {cdp_url}...")
         await automation.connect_over_cdp(cdp_url)
@@ -75,10 +76,15 @@ async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
             print(f"✓ Trang {page_num} - title: {await automation.page.title()}")
 
             # Chờ trang tải ổn định (10 giây)
+            # Etsy là SPA (Single Page Application), cần thời gian để render content
+            # Có thể cần điều chỉnh thời gian chờ tùy theo tốc độ mạng
             await asyncio.sleep(10)
 
             print("Đang lấy body và trích xuất dữ liệu...")
             try:
+                # Extract HTML body từ page
+                # Clone body để không ảnh hưởng đến DOM gốc
+                # Loại bỏ script và style tags để giảm kích thước dữ liệu
                 body_html = await automation.page.evaluate(
                     """
                     () => {
@@ -89,10 +95,15 @@ async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
                     """
                 )
 
+                # Normalize whitespace (thay nhiều spaces/tabs/newlines bằng 1 space)
                 cleaned_body = re.sub(r"\s+", " ", body_html).strip()
 
-                # Trích xuất dữ liệu HeyEtsy từ body
+                # Trích xuất dữ liệu HeyEtsy từ body HTML
+                # Parser tìm các pattern đặc biệt trong HTML để extract product info
                 extracted = extract_heyetsy_data(cleaned_body)
+                
+                # Lọc và deduplicate theo listing_id
+                # Chỉ lấy items có title và image hợp lệ
                 for item in extracted:
                     if not item.get("title") or not item.get("image"):
                         continue
@@ -132,7 +143,7 @@ async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
 
 
 async def connect_to_chrome_via_cdp():
-    """Kết nối với Chrome đang chạy qua CDP và lưu dữ liệu HeyEtsy."""
+    """Entry point cho CLI - nhận keyword và pages từ command line."""
 
     # Nhận từ khóa và số trang (CLI: arg1=keyword, arg2=pages)
     keyword = sys.argv[1] if len(sys.argv) > 1 else "t-shirt"
