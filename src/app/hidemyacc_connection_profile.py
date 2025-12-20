@@ -1,5 +1,11 @@
 """
-Test script để launch Playwright với HideMyAcc profile qua user-data-dir
+Module launch Playwright với HideMyAcc profile và scrape Etsy.
+
+Có 2 hàm chính:
+- launch_hidemyacc_profile_for_api(): Dùng cho API server
+- launch_with_profile(): Dùng cho CLI
+
+Xem docs/ETSY_SCRAPING_API.md để biết chi tiết cách sử dụng.
 """
 import asyncio
 import sys
@@ -26,20 +32,10 @@ async def launch_hidemyacc_profile_for_api(
     proxy_password: str = None
 ) -> tuple:
     """
-    Launch HideMyAcc profile và trả về automation object và thông tin profile.
-    Hàm này được thiết kế để sử dụng trong API server.
+    Launch HideMyAcc profile cho API server - chỉ launch, không scrape.
     
-    Args:
-        profile_id: Profile ID để sử dụng (nếu None, sẽ dùng profile đầu tiên)
-        use_command_line_config: Nếu True, sử dụng cấu hình từ command line
-        cdp_port: Port CDP để sử dụng (mặc định: 9223)
-        proxy_server: Địa chỉ proxy server (ví dụ: "http://149.20.240.190:4444")
-        proxy_username: Username cho proxy (nếu None, không dùng authentication)
-        proxy_password: Password cho proxy (nếu None, không dùng authentication)
-    
-    Returns:
-        tuple: (automation, profile_info) hoặc (None, None) nếu lỗi
-        profile_info: dict với keys: profile_id, profile_name, user_data_dir
+    Returns: (automation, profile_info) hoặc (None, None) nếu lỗi.
+    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
     """
     print("=" * 60)
     print("Launch HideMyAcc Profile cho API")
@@ -71,18 +67,22 @@ async def launch_hidemyacc_profile_for_api(
     print()
     
     # Cấu hình từ command line
+    # Luôn sử dụng cấu hình này khi use_command_line_config=True
     if use_command_line_config:
-        # Tự động tìm Marco browser mới nhất thay vì hardcode path
+        # Tự động tìm Marco browser mới nhất trong ~/.hidemyacc/browser/
+        # Marco browser là browser được HideMyAcc cung cấp, có fingerprinting tốt hơn Chrome thường
         executable_path = manager._find_marco_browser()
         if executable_path:
             print(f"✓ Tìm thấy Marco browser: {executable_path}")
         else:
             print("⚠️  Không tìm thấy Marco browser, sẽ dùng Chrome mặc định")
         
-        # Cấu hình proxy: chỉ dùng proxy từ API, không dùng default
+        # Cấu hình proxy: chỉ dùng proxy từ API request, không dùng default hardcode
+        # Proxy được truyền vào từ API request body (optional)
         proxy = None
         if proxy_server:
             # Có proxy server từ API - phải có đầy đủ username và password
+            # Format: {"server": "http://host:port", "username": "...", "password": "..."}
             proxy = {
                 "server": proxy_server,
                 "username": proxy_username,
@@ -91,10 +91,15 @@ async def launch_hidemyacc_profile_for_api(
             print(f"✓ Proxy với authentication: {proxy_server}")
         else:
             # Không có proxy từ API - không dùng proxy
+            # Browser sẽ dùng connection trực tiếp (không qua proxy)
             print("✓ Không sử dụng proxy")
         
         hidemyacc_data = "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"
         
+        # Extra args từ command line configuration
+        # --hidemyacc-data là arg riêng của HideMyAcc, cần thiết để kết nối đúng profile
+        # hidemyacc_data là encoded string chứa thông tin profile configuration
+        # --remote-debugging-port cho phép kết nối CDP (nếu cần debug)
         extra_args = [
             "--lang=en-US",
             "--disable-encryption",
@@ -104,7 +109,7 @@ async def launch_hidemyacc_profile_for_api(
             "--flag-switches-begin",
             "--flag-switches-end",
             "--origin-trial-disabled-features=CanvasTextNg|WebAssemblyCustomDescriptors",
-            f"--remote-debugging-port={cdp_port}",  # Thêm CDP port
+            f"--remote-debugging-port={cdp_port}",  # CDP port để có thể kết nối qua CDP nếu cần
         ]
         
         print("✓ Sử dụng cấu hình từ command line")
@@ -127,18 +132,22 @@ async def launch_hidemyacc_profile_for_api(
         print()
     
     # Launch Playwright với profile
+    # headless=False để hiển thị browser (có thể debug và xem quá trình)
     automation = PlaywrightAutomation(headless=False)
     
     try:
         print("Đang launch Playwright với HideMyAcc profile...")
         print()
         
+        # Launch browser với profile qua user-data-dir
+        # Playwright sẽ sử dụng profile có sẵn thay vì tạo profile mới
+        # require_executable=True để đảm bảo dùng đúng Marco browser, không fallback Chromium
         await automation.launch_with_profile(
             profile['user_data_dir'],
             executable_path=executable_path,
             proxy=proxy,
             extra_args=extra_args,
-            require_executable=True
+            require_executable=True  # Bắt buộc dùng đúng executable để không fallback Chromium mặc định
         )
         
         print("✓ Đã launch thành công!")
@@ -168,14 +177,9 @@ async def launch_with_profile(
     pages: int = 5
 ):
     """
-    Test launch Playwright với HideMyAcc profile qua user-data-dir và thực hiện search trên Etsy
+    Launch HideMyAcc profile và thực hiện scraping Etsy - dùng cho CLI.
     
-    Args:
-        profile_id: Profile ID để sử dụng
-        use_command_line_config: Nếu True, sử dụng cấu hình từ command line (proxy, args, executable)
-        disable_proxy: Tắt proxy (mặc định True khi chạy trực tiếp)
-        keyword: Từ khóa để search trên Etsy
-        pages: Số trang để crawl
+    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết cách sử dụng.
     """
     print("=" * 60)
     print("Test Launch Playwright với HideMyAcc Profile")
@@ -409,7 +413,7 @@ async def launch_with_profile(
 
 
 async def main():
-    """Main function"""
+    """Main function cho CLI - parse arguments và gọi launch_with_profile()."""
     import argparse
     
     parser = argparse.ArgumentParser(description="Test launch Playwright với HideMyAcc profile và crawl Etsy")

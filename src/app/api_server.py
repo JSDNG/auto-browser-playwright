@@ -1,17 +1,11 @@
 """
-FastAPI server đơn giản để làm việc với HideMyAcc
+FastAPI server để crawl dữ liệu Etsy.
 
-Mục đích:
-- ✅ Tự động tìm HideMyAcc profile
-- ✅ Tự động khởi động Chrome (Marco/Chrome) với profile đó + CDP
-- ✅ Tự động kết nối Playwright qua CDP
+Cung cấp 2 endpoints:
+- /api/v1/etsy/scrape: CDP connection (yêu cầu Chrome đã chạy với CDP)
+- /api/v1/etsy/scrape_hidemyacc: HideMyAcc profile (tự động launch)
 
-API này KHÔNG cần body đầu vào – chỉ cần gọi endpoint là tự xử lý.
-
-Cấu hình nhanh (chỉnh trực tiếp trong file cho dễ deploy, không cần .env):
-- CONFIG_API_HOST: host mà Uvicorn sẽ bind (mặc định: 0.0.0.0)
-- CONFIG_API_PORT: port local của API (mặc định: 5674)
-- CONFIG_CDP_PORT: port CDP cho Chrome/Marco (mặc định: 9223)
+Xem docs/ETSY_SCRAPING_API.md để biết chi tiết cách sử dụng.
 """
 # CRITICAL: Set Windows event loop policy FIRST, before any imports
 import sys
@@ -108,19 +102,10 @@ async def scrape_etsy_with_profile(
     proxy_password: str = None,
 ):
     """
-    Scrape Etsy với HideMyAcc profile: launch profile -> mở Etsy -> search
+    Scrape Etsy với HideMyAcc profile.
     
-    Args:
-        keyword: Từ khóa tìm kiếm
-        pages: Số trang cần crawl
-        profile_id: Profile ID để sử dụng (None = dùng profile đầu tiên)
-        use_command_line_config: Sử dụng cấu hình từ command line
-        proxy_server: Địa chỉ proxy server (nếu None, không dùng proxy hoặc dùng default)
-        proxy_username: Username cho proxy (nếu None, không dùng authentication)
-        proxy_password: Password cho proxy (nếu None, không dùng authentication)
-    
-    Returns:
-        dict: Kết quả scrape với keys: success, count, message, error
+    Launch profile -> navigate -> extract -> gửi webhook -> detach.
+    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
     """
     search_input = SearchInput(keyword=keyword, pages=pages)
     logger.info(f"Bắt đầu scrape Etsy với profile: keyword='{search_input.keyword}', pages={search_input.pages}")
@@ -130,6 +115,10 @@ async def scrape_etsy_with_profile(
     
     try:
         # Bước 1: Launch HideMyAcc profile
+        # - Tự động tìm Marco browser executable
+        # - Cấu hình proxy nếu có (hoặc không dùng proxy)
+        # - Launch Playwright với profile qua user-data-dir
+        # - Trả về automation object để tiếp tục sử dụng
         logger.info("Đang launch HideMyAcc profile...")
         automation, profile_info = await launch_hidemyacc_profile_for_api(
             profile_id=profile_id,
@@ -149,6 +138,9 @@ async def scrape_etsy_with_profile(
         logger.info(f"✓ Đã launch profile: {profile_info['profile_name']}")
         
         # Bước 2: Mở Etsy và thực hiện search
+        # - Navigate đến từng trang Etsy search (page 1 đến page N)
+        # - Chờ 10 giây để trang tải ổn định (Etsy là SPA, cần thời gian render)
+        # - Extract HTML body và parse dữ liệu HeyEtsy
         logger.info("Đang mở Etsy và thực hiện search...")
         
         for page_num in range(1, search_input.pages + 1):
@@ -165,6 +157,8 @@ async def scrape_etsy_with_profile(
             
             logger.info("Đang lấy body và trích xuất dữ liệu...")
             try:
+                # Extract HTML body từ page (loại bỏ script và style tags để giảm kích thước)
+                # Clone body để không ảnh hưởng đến DOM gốc
                 body_html = await automation.page.evaluate(
                     """
                     () => {
@@ -175,10 +169,15 @@ async def scrape_etsy_with_profile(
                     """
                 )
                 
+                # Normalize whitespace để dễ parse
                 cleaned_body = re.sub(r"\s+", " ", body_html).strip()
                 
-                # Trích xuất dữ liệu HeyEtsy từ body
+                # Trích xuất dữ liệu HeyEtsy từ body HTML
+                # Parser tìm các pattern đặc biệt trong HTML để extract product info
                 extracted = extract_heyetsy_data(cleaned_body)
+                
+                # Lọc và deduplicate theo listing_id
+                # Chỉ lấy items có title và image, loại bỏ duplicates
                 for item in extracted:
                     if not item.get("title") or not item.get("image"):
                         continue
@@ -191,6 +190,9 @@ async def scrape_etsy_with_profile(
                 logger.error(f"❌ Lỗi khi xử lý trang {page_num}: {e}")
         
         # Bước 3: Gửi dữ liệu tới webhook
+        # - Convert dict values thành JSON bytes
+        # - POST tới webhook n8n (async thread để không block)
+        # - Webhook sẽ xử lý và lưu dữ liệu
         if all_data:
             try:
                 json_payload = _payload_to_json_bytes(all_data.values())
@@ -203,6 +205,7 @@ async def scrape_etsy_with_profile(
             logger.warning("⚠️ Không có dữ liệu để gửi.")
         
         # Detach automation (không đóng browser)
+        # Browser sẽ được giữ mở để có thể tiếp tục sử dụng hoặc debug
         await automation.detach()
         
         return {
@@ -227,8 +230,10 @@ async def scrape_etsy_with_profile(
 @api_router.post("/etsy/scrape", response_model=EtsyScrapeResponse)
 async def scrape_etsy(search_input: SearchInput) -> EtsyScrapeResponse:
     """
-    Crawl dữ liệu từ Etsy theo keyword và số trang.
-    Yêu cầu Chrome (hoặc HideMyAcc profile) đã được khởi động với CDP port 9223.
+    Crawl Etsy qua CDP Connection.
+    
+    Yêu cầu Chrome đã chạy với --remote-debugging-port=9223.
+    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
     """
     logger.info(f"Nhận yêu cầu scrape Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
 
@@ -259,30 +264,9 @@ async def scrape_etsy(search_input: SearchInput) -> EtsyScrapeResponse:
 @api_router.post("/etsy/scrape_hidemyacc", response_model=EtsyScrapeResponse)
 async def scrape_etsy_hidemyacc(search_input: HideMyAccSearchInput) -> EtsyScrapeResponse:
     """
-    Crawl dữ liệu từ Etsy theo keyword và số trang sử dụng HideMyAcc profile.
-    Tự động launch HideMyAcc profile, mở Etsy và thực hiện search.
-    (API mới - sử dụng HideMyAcc profile)
+    Crawl Etsy với HideMyAcc profile - tự động launch và scrape.
     
-    Có 2 trường hợp sử dụng:
-    
-    1. Không có proxy (chỉ truyền bắt buộc):
-       {
-         "profile_id": "xxx",
-         "keyword": "t-shirt",
-         "pages": 5
-       }
-    
-    2. Có proxy (truyền thêm proxy):
-       {
-         "profile_id": "xxx",
-         "keyword": "t-shirt",
-         "pages": 5,
-         "proxy_server": "http://proxy.example.com:8080",
-         "proxy_username": "user",
-         "proxy_password": "pass"
-       }
-    
-    Lưu ý: Nếu có proxy_server thì phải có đầy đủ proxy_username và proxy_password.
+    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết request/response format.
     """
     logger.info(f"Nhận yêu cầu scrape Etsy với HideMyAcc: keyword='{search_input.keyword}', pages={search_input.pages}, profile_id={search_input.profile_id}")
 

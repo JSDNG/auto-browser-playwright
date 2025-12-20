@@ -2,7 +2,9 @@
 
 ## Tổng quan
 
-API này cho phép kết nối với Chrome đang chạy qua CDP (Chrome DevTools Protocol) để kiểm tra trạng thái delivered của các shipments từ USPS.
+API này cung cấp endpoint **Etsy Scraping** (`/api/v1/etsy/scrape`): Crawl dữ liệu sản phẩm từ Etsy qua CDP connection.
+
+> **Lưu ý**: Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về Etsy scraping endpoints.
 
 ## Yêu cầu hệ thống
 - Python 3.11+
@@ -104,126 +106,10 @@ Sau khi server chạy, bạn có thể:
 
 ## Các Endpoints
 
-### POST `/api/v1/cdp/auto-check-tracking` - Kiểm tra nhiều shipments (Batch)
+API hiện tại chỉ cung cấp endpoint **Etsy Scraping**. Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về:
 
-**Request Body:**
-```json
-[
-    {
-        "shipment_id": "123",
-        "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
-    },
-    {
-        "shipment_id": "456",
-        "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858308"
-    }
-]
-```
-
-**Response:**
-```json
-[
-    {
-        "shipment_id": "123",
-        "delivered": true,
-        "delivered_at": "2025-12-13T05:01:00Z"
-    },
-    {
-        "shipment_id": "456",
-        "delivered": false,
-        "delivered_at": null
-    }
-]
-```
-
-**Ví dụ với curl:**
-```bash
-curl -X POST "http://localhost:5674/api/v1/cdp/auto-check-tracking" \
-  -H "Content-Type: application/json" \
-  -d '[
-    {
-        "shipment_id": "123",
-        "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
-    }
-  ]'
-```
-
-```bash
-curl http://localhost:5674/health
-```
-
-## Ví dụ sử dụng với Python
-
-```python
-import requests
-
-# Dữ liệu shipments
-shipments = [
-    {
-        "shipment_id": "123",
-        "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
-    },
-    {
-        "shipment_id": "456",
-        "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858308"
-    }
-]
-
-# Gọi API
-response = requests.post(
-    "http://localhost:5674/api/v1/cdp/auto-check-tracking",
-    json=shipments,
-    timeout=30,
-)
-response.raise_for_status()
-
-# Xử lý kết quả (danh sách ShipmentTrackingResponse)
-results = response.json()
-
-for item in results:
-    print(f"\nShipment ID: {item['shipment_id']}")
-    print(f"  Delivered: {item['delivered']}")
-    print(f"  Delivered at: {item['delivered_at']}")
-```
-
-## Ví dụ sử dụng với PHP
-
-```php
-<?php
-$shipments = [
-    [
-        'shipment_id' => '123',
-        'tracking_link' => 'https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307'
-    ],
-    [
-        'shipment_id' => '456',
-        'tracking_link' => 'https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858308'
-    ]
-];
-
-$ch = curl_init('http://localhost:5674/api/v1/cdp/auto-check-tracking');
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($shipments));
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-
-$response = curl_exec($ch);
-
-if ($response === false) {
-    throw new \RuntimeException('Curl error: ' . curl_error($ch));
-}
-
-curl_close($ch);
-
-$results = json_decode($response, true);
-
-foreach ($results as $item) {
-    echo "\nShipment ID: " . $item['shipment_id'] . "\n";
-    echo "  Delivered: " . ($item['delivered'] ? 'true' : 'false') . "\n";
-    echo "  Delivered at: " . ($item['delivered_at'] ?? 'null') . "\n";
-}
-?>
-```
+- `/api/v1/etsy/scrape` - Etsy scraping qua CDP connection
+- `/api/v1/etsy/scrape_hidemyacc` - Etsy scraping với HideMyAcc profile
 
 ## Xử lý lỗi thường gặp
 
@@ -265,26 +151,11 @@ playwright install chromium
 
 ## Lưu ý quan trọng
 
-1. **Chrome phải được khởi động trước khi chạy API**
+1. **Chrome phải được khởi động trước** (cho endpoint `/api/v1/etsy/scrape`)
 2. **Không đóng Chrome** trong khi API đang xử lý requests
-3. **Mỗi request sẽ mở một tab mới** trong Chrome (hoặc sử dụng tab hiện có)
-4. **Browser sẽ không bị đóng** sau khi xử lý xong (chỉ detach khỏi Playwright)
-5. **API xử lý tuần tự** các shipments trong batch request (một cái một)
-
-## Tối ưu hóa
-
-### Xử lý song song (nếu cần)
-
-Hiện tại API xử lý tuần tự. Nếu muốn xử lý song song, có thể sử dụng `asyncio.gather()`:
-
-```python
-# Trong api_server.py, thay vì for loop:
-results = await asyncio.gather(*[
-    connect_to_chrome_via_cdp(...) for shipment in shipments
-])
-```
-
-**Lưu ý:** Xử lý song song có thể gây quá tải Chrome nếu có quá nhiều requests cùng lúc.
+3. **Browser sẽ không bị đóng** sau khi xử lý xong (chỉ detach khỏi Playwright)
+4. **API xử lý tuần tự** - mỗi request xử lý một cái một
+5. **Dữ liệu được gửi tới webhook** sau khi scrape xong
 
 ## Dừng server
 
@@ -310,8 +181,8 @@ Hoặc đóng Chrome thủ công.
 
 API server sẽ log các thông tin quan trọng:
 - Request nhận được
-- Shipment đang xử lý
-- Kết quả của từng shipment
+- Trang đang xử lý
+- Số lượng sản phẩm đã extract
 - Lỗi nếu có
 
 ### Debug mode

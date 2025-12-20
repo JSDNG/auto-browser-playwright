@@ -94,58 +94,31 @@ Server sẽ chạy ở `http://localhost:5674`:
 
 ---
 
-## HeyEtsy data capture (CDP script)
+## Etsy Scraping (CDP script & API)
 
 - **Mục đích**: Kết nối Chrome đã mở sẵn qua CDP, duyệt kết quả tìm kiếm Etsy và trích dữ liệu từ overlay HeyEtsy.
-- **Chạy**:
+- **Chạy CLI**:
   ```bash
   # keyword mặc định "t-shirt", pages mặc định 5
-  python src/app/cdp_connection.py "<keyword>" <pages>
+  python src/app/cdp_connection.py "handmade bag" 5
   ```
-- **Cách làm**: Script dùng `PlaywrightAutomation.connect_over_cdp` → điều hướng từng trang tìm kiếm Etsy → đợi trang ổn định → `extract_heyetsy_data` (trong `src/utils/heyetsy_parser.py`) để lọc listing (bỏ video, yêu cầu `total_sold > 5`) → ghi kết quả duy nhất theo `listing_id` vào `captured_data.json` bằng `save_json` (trong `src/models/output.py`).
-- **Yêu cầu**: Chrome đã bật `--remote-debugging-port=9223` và đang mở, giống phần chuẩn bị ở trên.
+- **Chạy API**: Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về 2 endpoints:
+  - `/api/v1/etsy/scrape` - CDP connection
+  - `/api/v1/etsy/scrape_hidemyacc` - HideMyAcc profile
+- **Cách làm**: 
+  - Script dùng `PlaywrightAutomation.connect_over_cdp` → điều hướng từng trang tìm kiếm Etsy → đợi trang ổn định (10 giây) → `extract_heyetsy_data` (trong `src/utils/heyetsy_parser.py`) để parse dữ liệu → deduplicate theo `listing_id` → gửi dữ liệu tới webhook `https://n8n.supover.com/webhook/crawler-etsy`.
+- **Yêu cầu**: Chrome đã bật `--remote-debugging-port=9223` và đang mở (cho CDP connection).
 
 ---
 
-## Endpoint chính
+## Endpoints chính
 
-### POST `/api/v1/cdp/auto-check-tracking`
+API hiện tại cung cấp các endpoints Etsy Scraping:
 
-**Mục đích**: Nhận danh sách USPS tracking links, trả về trạng thái delivered cho từng shipment.
+- **POST `/api/v1/etsy/scrape`**: Crawl Etsy qua CDP connection (yêu cầu Chrome đã chạy với CDP)
+- **POST `/api/v1/etsy/scrape_hidemyacc`**: Crawl Etsy với HideMyAcc profile (tự động launch)
 
-**Request body (ví dụ)**:
-
-```json
-[
-  {
-    "shipment_id": "123",
-    "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
-  },
-  {
-    "shipment_id": "456",
-    "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858308"
-  }
-]
-```
-
-**Response (ví dụ)**:
-
-```json
-[
-  {
-    "shipment_id": "123",
-    "delivered": true,
-    "delivered_at": "2025-12-13T05:01:00Z"
-  },
-  {
-    "shipment_id": "456",
-    "delivered": false,
-    "delivered_at": null
-  }
-]
-```
-
-Các rule validate, logging, và luồng xử lý được mô tả chi tiết trong `docs/implement.md` và `docs/tdd.md`.
+Xem `docs/ETSY_SCRAPING_API.md để biết chi tiết về request/response format và cách sử dụng.
 
 ---
 
