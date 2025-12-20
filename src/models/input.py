@@ -1,10 +1,7 @@
-"""
-Input validation models for automation requests.
-"""
+"""Input models used by the current automation scripts."""
 
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, validator
-import re
+from typing import Optional
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ViewportConfig(BaseModel):
@@ -12,40 +9,57 @@ class ViewportConfig(BaseModel):
     height: int = 720
 
 
-class ActionConfig(BaseModel):
-    type: str
-    selector: Optional[str] = None
-    value: Optional[str] = None
-    timeout: int = 30000
-    wait_until: Optional[str] = "domcontentloaded"
+class SearchInput(BaseModel):
+    """Simple search input for Etsy scraping."""
+
+    keyword: str = Field(default="t-shirt", min_length=1)
+    pages: int = Field(default=5, ge=1, le=20)
+
+    @field_validator("keyword")
+    @classmethod
+    def strip_keyword(cls, v: str):
+        cleaned = v.strip()
+        return cleaned or "t-shirt"
 
 
-class ExtractConfig(BaseModel):
-    name: str
-    selector: str
-    attribute: Optional[str] = None
-    multiple: bool = False
-
-
-class AutomationInput(BaseModel):
-    url: str 
-    headless: bool = False
-    timeout: int = 300000
-    viewport: ViewportConfig = Field(default_factory=ViewportConfig)
-    wait_for_selector: Optional[str] = None
-    actions: List[ActionConfig] = Field(default_factory=list)
-    extract: List[ExtractConfig] = Field(default_factory=list)
+class HideMyAccSearchInput(BaseModel):
+    """
+    Search input for Etsy scraping với HideMyAcc profile.
     
-    @validator('url')
-    def validate_url(cls, v):
-        """Validate URL format and provide fallback"""
-        if not v or v.lower() in ['string', 'none', 'null', '']:
-            return "https://www.amazon.com/"
+    Có 2 trường hợp sử dụng:
+    1. Không có proxy: chỉ truyền profile_id, keyword, pages
+    2. Có proxy: truyền thêm proxy_server, proxy_username, proxy_password
+    """
+
+    profile_id: str = Field(..., description="HideMyAcc profile ID (bắt buộc)")
+    keyword: str = Field(..., min_length=1, description="Từ khóa tìm kiếm (bắt buộc)")
+    pages: int = Field(..., ge=1, le=20, description="Số trang cần crawl (bắt buộc)")
+    proxy_server: Optional[str] = Field(default=None, description="Proxy server address (ví dụ: http://149.20.240.190:4444)")
+    proxy_username: Optional[str] = Field(default=None, description="Proxy username (bắt buộc nếu có proxy_server)")
+    proxy_password: Optional[str] = Field(default=None, description="Proxy password (bắt buộc nếu có proxy_server)")
+
+    @field_validator("keyword")
+    @classmethod
+    def strip_keyword(cls, v: str):
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("keyword không được để trống")
+        return cleaned
+    
+    @model_validator(mode='after')
+    def validate_proxy_fields(self):
+        """Đảm bảo nếu có proxy_server thì phải có đầy đủ username và password"""
+        proxy_server = self.proxy_server
+        proxy_username = self.proxy_username
+        proxy_password = self.proxy_password
         
-        # Simple URL validation
-        url_pattern = re.compile(r'^https?://[^\s/$.?#].[^\s]*$', re.IGNORECASE)
-        if not url_pattern.match(v):
-            # If not a valid URL, use default
-            return "https://www.amazon.com/"
+        # Nếu có proxy_server thì phải có đầy đủ username và password
+        if proxy_server:
+            if not proxy_username or not proxy_password:
+                raise ValueError("Nếu có proxy_server thì phải có đầy đủ proxy_username và proxy_password")
         
-        return v 
+        # Nếu có proxy_username hoặc proxy_password thì phải có proxy_server
+        if (proxy_username or proxy_password) and not proxy_server:
+            raise ValueError("Nếu có proxy_username hoặc proxy_password thì phải có proxy_server")
+        
+        return self

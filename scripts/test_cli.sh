@@ -90,13 +90,13 @@ test_json_output() {
     eval "$test_command" > "$temp_output" 2>&1 || exit_code=$?
     
     # Check if output is valid JSON
-    if python -m json.tool < "$temp_output" > /dev/null 2>&1; then
+    if python3 -m json.tool < "$temp_output" > /dev/null 2>&1; then
         print_success "$test_name (valid JSON)"
         ((TESTS_PASSED++))
         
         # Display parsed JSON
         echo "Parsed JSON:"
-        python -c "import json; print(json.dumps(json.load(open('$temp_output')), indent=2))" | head -10
+        python3 -c "import json; print(json.dumps(json.load(open('$temp_output')), indent=2))" | head -10
         echo "---"
     else
         print_error "$test_name (invalid JSON)"
@@ -118,48 +118,48 @@ echo "=================================================="
 echo
 
 # Test 1: Basic help/version
-run_test "Help/Version Test" "python -m src.cli --help || python -m src.cli" 1
+run_test "Help/Version Test" "python3 -m src.cli --help || python3 -m src.cli" 1
 
 # Test 2: Basic navigation test
-test_json_output "Basic Navigation Test" "python -m src.cli '{\"url\": \"https://example.com\", \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'"
+test_json_output "Basic Navigation Test" "python3 -m src.cli '{\"url\": \"https://example.com\", \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'"
 
 # Test 3: Invalid JSON input
-run_test "Invalid JSON Test" "python -m src.cli '{invalid-json}'" 1
+run_test "Invalid JSON Test" "python3 -m src.cli '{invalid-json}'" 1
 
 # Test 4: Invalid URL test
-run_test "Invalid URL Test" "python -m src.cli '{\"url\": \"invalid-url\"}'" 1
+run_test "Invalid URL Test" "python3 -m src.cli '{\"url\": \"invalid-url\"}'" 1
 
 # Test 5: Missing required fields
-run_test "Missing URL Test" "python -m src.cli '{\"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'" 1
+run_test "Missing URL Test" "python3 -m src.cli '{\"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'" 1
 
 # Test 6: Empty input test
-run_test "Empty Input Test" "python -m src.cli '{}'" 1
+run_test "Empty Input Test" "python3 -m src.cli '{}'" 1
 
 # Test 7: Minimal valid input
-test_json_output "Minimal Valid Input Test" "python -m src.cli '{\"url\": \"https://example.com\"}'"
+test_json_output "Minimal Valid Input Test" "python3 -m src.cli '{\"url\": \"https://example.com\"}'"
 
 # Test 8: Multiple extraction test
-test_json_output "Multiple Extraction Test" "python -m src.cli '{\"url\": \"https://example.com\", \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}, {\"name\": \"links\", \"selector\": \"a\", \"attribute\": \"href\", \"multiple\": true}]}'"
+test_json_output "Multiple Extraction Test" "python3 -m src.cli '{\"url\": \"https://example.com\", \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}, {\"name\": \"links\", \"selector\": \"a\", \"attribute\": \"href\", \"multiple\": true}]}'"
 
 # Test 9: Custom viewport test
-test_json_output "Custom Viewport Test" "python -m src.cli '{\"url\": \"https://example.com\", \"viewport\": {\"width\": 800, \"height\": 600}, \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'"
+test_json_output "Custom Viewport Test" "python3 -m src.cli '{\"url\": \"https://example.com\", \"viewport\": {\"width\": 800, \"height\": 600}, \"extract\": [{\"name\": \"title\", \"selector\": \"h1\"}]}'"
 
 # Test 10: Action test (if httpbin is available)
-test_json_output "Action Test" "python -m src.cli '{\"url\": \"https://httpbin.org/forms/post\", \"actions\": [{\"type\": \"fill\", \"selector\": \"input[name=\\\"custname\\\"]\", \"value\": \"Test User\"}], \"extract\": [{\"name\": \"form_title\", \"selector\": \"h1\"}]}'"
+test_json_output "Action Test" "python3 -m src.cli '{\"url\": \"https://httpbin.org/forms/post\", \"actions\": [{\"type\": \"fill\", \"selector\": \"input[name=\\\"custname\\\"]\", \"value\": \"Test User\"}], \"extract\": [{\"name\": \"form_title\", \"selector\": \"h1\"}]}'"
 
 # Test 11: Timeout test with fast timeout
-run_test "Timeout Test" "python -m src.cli '{\"url\": \"https://httpbin.org/delay/10\", \"timeout\": 1000}'" 1
+run_test "Timeout Test" "python3 -m src.cli '{\"url\": \"https://httpbin.org/delay/10\", \"timeout\": 1000}'" 1
 
 # Test 12: Security test - blocked domain
-run_test "Security Test (Blocked Domain)" "python -m src.cli '{\"url\": \"http://localhost:8080\"}'" 1
+run_test "Security Test (Blocked Domain)" "python3 -m src.cli '{\"url\": \"http://localhost:8080\"}'" 1
 
 # Test 13: Large data extraction
-test_json_output "Large Data Test" "python -m src.cli '{\"url\": \"https://quotes.toscrape.com/\", \"extract\": [{\"name\": \"quotes\", \"selector\": \".quote .text\", \"multiple\": true}, {\"name\": \"authors\", \"selector\": \".quote .author\", \"multiple\": true}]}'"
+test_json_output "Large Data Test" "python3 -m src.cli '{\"url\": \"https://quotes.toscrape.com/\", \"extract\": [{\"name\": \"quotes\", \"selector\": \".quote .text\", \"multiple\": true}, {\"name\": \"authors\", \"selector\": \".quote .author\", \"multiple\": true}]}'"
 
 # Test 14: Stdin input test
 print_status "Testing stdin input"
 ((TESTS_RUN++))
-echo '{"url": "https://example.com", "extract": [{"name": "title", "selector": "h1"}]}' | python -m src.cli
+echo '{"url": "https://example.com", "extract": [{"name": "title", "selector": "h1"}]}' | python3 -m src.cli
 if [ $? -eq 0 ]; then
     print_success "Stdin Input Test"
     ((TESTS_PASSED++))
@@ -173,7 +173,7 @@ echo
 print_status "Performance Test (should complete within 10 seconds)"
 ((TESTS_RUN++))
 start_time=$(date +%s)
-python -m src.cli '{"url": "https://example.com", "extract": [{"name": "title", "selector": "h1"}]}' > /dev/null 2>&1
+python3 -m src.cli '{"url": "https://example.com", "extract": [{"name": "title", "selector": "h1"}]}' > /dev/null 2>&1
 end_time=$(date +%s)
 duration=$((end_time - start_time))
 
