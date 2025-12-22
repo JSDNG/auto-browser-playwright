@@ -40,6 +40,10 @@ class PlaywrightAutomation:
         """
         Launch browser với user-data-dir (profile) cụ thể
         
+        Playwright điều khiển browser trực tiếp qua launch_persistent_context (KHÔNG qua CDP).
+        Nếu extra_args có chứa --remote-debugging-port, CDP port sẽ được mở để cho phép kết nối lại
+        sau này, nhưng Playwright vẫn điều khiển trực tiếp, không sử dụng CDP để điều khiển.
+        
         Args:
             user_data_dir: Đường dẫn đến user data directory của profile
             executable_path: Đường dẫn đến browser executable (ví dụ: Marco browser từ HideMyAcc)
@@ -47,12 +51,15 @@ class PlaywrightAutomation:
             proxy: Proxy settings dict với keys: server, username (optional), password (optional)
                    Ví dụ: {"server": "http://proxy:port", "username": "user", "password": "pass"}
             extra_args: Danh sách args bổ sung (sẽ được thêm vào args mặc định)
+                       Có thể bao gồm --remote-debugging-port để mở CDP port cho kết nối sau này
+            require_executable: Nếu True, bắt buộc phải có executable_path hợp lệ, không cho fallback
         
         Lưu ý:
-            - Sử dụng launch_persistent_context để load profile trực tiếp
+            - Sử dụng launch_persistent_context để load profile trực tiếp (direct launch)
             - Profile sẽ được load với tất cả cookies, extensions, settings
             - Không thể launch nhiều instance cùng lúc với cùng user_data_dir
             - Ưu tiên executable_path hơn channel
+            - Playwright điều khiển trực tiếp, không qua CDP (ngược với connect_over_cdp)
         """
         self.playwright = await async_playwright().start()
         
@@ -79,7 +86,6 @@ class PlaywrightAutomation:
                 "--disable-features=ExtensionsToolbarMenu,ChromeLabs,ReadLater,TriggerNetworkDataMigration,ChromeWhatsNewUI,ViewportHeightClientHintHeader",
                 "--flag-switches-begin",
                 "--flag-switches-end",
-                "--origin-trial-disabled-features=CanvasTextNg|WebAssemblyCustomDescriptors",
             ]
         
         # Launch với persistent context (user-data-dir)
@@ -159,15 +165,26 @@ class PlaywrightAutomation:
 
     async def connect_over_cdp(self, cdp_endpoint: str = "http://localhost:9223"):
         """
-        Connect to an existing Chrome instance via CDP (Chrome DevTools Protocol)
+        Kết nối với Chrome instance đang chạy qua CDP (Chrome DevTools Protocol)
+        
+        Khác với launch_with_profile (direct launch), method này kết nối với browser đã được
+        khởi động sẵn thông qua CDP endpoint. Browser phải được launch với --remote-debugging-port
+        để mở CDP port.
         
         Args:
             cdp_endpoint: CDP endpoint URL (default: http://localhost:9223)
                           Format: http://localhost:PORT hoặc ws://localhost:PORT
+                          Playwright tự động convert http:// sang ws://
         
         Yêu cầu:
-            Chrome phải được khởi động với flag: --remote-debugging-port=9223
+            Chrome phải được khởi động với flag: --remote-debugging-port=PORT
             Ví dụ: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9223
+            Hoặc: Marco browser được launch với --remote-debugging-port trong extra_args
+        
+        Lưu ý:
+            - Method này điều khiển browser QUA CDP (khác với launch_with_profile điều khiển trực tiếp)
+            - Dùng khi browser đã được launch sẵn (ví dụ: từ HideMyAcc app hoặc launch trước đó)
+            - Nếu browser chưa chạy, dùng launch_with_profile thay vì method này
         """
         self.playwright = await async_playwright().start()
         
