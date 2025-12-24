@@ -2,7 +2,7 @@
 REM Script để khởi động Chrome với CDP trên Windows
 
 set PORT=%1
-if "%PORT%"=="" set PORT=9223
+if "%PORT%"=="" set PORT=9224
 
 echo Khởi động Chrome với CDP tại port %PORT%...
 echo URL endpoint: http://localhost:%PORT%

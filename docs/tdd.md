@@ -1,4 +1,4 @@
-# Test Driven Development (TDD) - CDP Tracking API (USPS) & HeyEtsy scraper
+# Test Driven Development (TDD) - Grok Video Generation API
 
 ## 1. Tổng quan
 
@@ -22,7 +22,7 @@ Client (PHP/Python/...) ──▶ FastAPI (`api_server.py`) ──▶ Chrome (CD
 ```
 
 ```
-CLI (keyword/pages) ──▶ cdp_connection.py ──▶ Chrome (CDP) ──▶ Etsy search pages ──▶ HeyEtsy overlay
+CLI (text prompt) ──▶ cdp_connection.py ──▶ Chrome (CDP) ──▶ Grok Imagine ──▶ Video generation
 ```
 
 ## 1.2. Project Structure (liên quan tới API này)
@@ -35,10 +35,10 @@ src/
 ├── core/
 │   └── automation.py      # PlaywrightAutomation (launch/connect_over_cdp)
 ├── models/
-│   ├── input.py           # SearchInput / ViewportConfig (dùng nội bộ)
+│   ├── input.py           # GrokInput / ViewportConfig (dùng nội bộ)
 │   └── output.py          # save_json helper
 └── utils/
-    └── heyetsy_parser.py  # extract_heyetsy_data helper
+    └── (utility helpers)
 ```
 
 ## 2. User Stories & Test Ideas (rút gọn)
@@ -97,9 +97,9 @@ Do phần lớn logic phụ thuộc vào thực tế trang USPS + Chrome thật,
 
 File này chỉ giữ vai trò mô tả ý tưởng test để tham khảo, toàn bộ nội dung cũ liên quan tới n8n, `server_playwright.py`, `main.py`, `actions.py`, `extractor.py` đã được loại bỏ để phù hợp kiến trúc mới.
 
-## 5. HeyEtsy scraper (cdp_connection.py) - Test ideas
+## 5. Grok Video Generation (cdp_connection.py) - Test ideas
 
-- Khi parse HTML mẫu, `extract_heyetsy_data` bỏ video listing và bỏ `total_sold <= 5`.
-- Gộp kết quả duy nhất theo `listing_id` khi nhiều trang chứa cùng listing.
-- Lưu đúng định dạng JSON (UTF-8, indent=2) vào `captured_data.json` thông qua `save_json`.
-- Đường dẫn output tồn tại và được ghi khi Chrome/CDP không lỗi.
+- Khi navigate đến Grok Imagine, trang load đầy đủ sau 5 giây.
+- Element cụ thể được tìm thấy và click thành công.
+- Input field được tìm thấy và nhập prompt text thành công.
+- Browser được giữ mở (detach) sau khi hoàn thành.

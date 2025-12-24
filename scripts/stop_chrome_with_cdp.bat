@@ -2,7 +2,7 @@
 REM Script để dừng Chrome đang chạy với CDP trên Windows
 
 set PORT=%1
-if "%PORT%"=="" set PORT=9223
+if "%PORT%"=="" set PORT=9224
 
 echo Đang tìm Chrome đang chạy với CDP tại port %PORT%...
 echo.

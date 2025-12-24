@@ -1,141 +1,214 @@
 """
-Module kết nối Playwright với Chrome đang chạy qua CDP để scrape Etsy.
+Module kết nối Playwright với Chrome đang chạy qua CDP để gen video với Grok.
 
 Sử dụng:
-- CLI: python3 src/app/cdp_connection.py [keyword] [pages]
-- API: Import hàm scrape_etsy_via_cdp() trong api_server.py
+- CLI: python3 src/app/cdp_connection.py [text]
+- API: Import hàm grok_gen_video_via_cdp() trong api_server.py
 
-Xem docs/ETSY_SCRAPING_API.md và docs/CDP_CONNECTION.md để biết chi tiết.
+Functions:
+- grok_gen_video_via_cdp(): Navigate đến Grok Imagine và nhập prompt để gen video qua CDP
+
+Xem docs/CDP_CONNECTION.md để biết chi tiết.
 """
 import asyncio
-import json
-import re
 import sys
 from pathlib import Path
-from urllib.parse import quote_plus
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.utils.heyetsy_parser import extract_heyetsy_data
 from src.core.automation import PlaywrightAutomation
-from src.models import SearchInput
+from src.models import GrokInput
 
-WEBHOOK_URL = "https://n8n.supover.com/webhook/crawler-etsy"
-
-
-def _payload_to_json_bytes(data_iterable):
-    """Convert iterable of mappings to JSON bytes."""
-    return json.dumps(list(data_iterable), ensure_ascii=False).encode("utf-8")
-
-
-def _post_json(webhook_url: str, payload: bytes):
-    """Send JSON payload to webhook via POST."""
-    request = Request(webhook_url, data=payload, method="POST")
-    # Gửi JSON bytes nhưng Content-Type cần là application/json
-    request.add_header("Content-Type", "application/json")
-    request.add_header("Content-Length", str(len(payload)))
-    with urlopen(request, timeout=30) as response:
-        return response.read()
-
-
-async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
+async def _grok_imagine_interact(automation: PlaywrightAutomation, text: str, logger=None):
     """
-    Scrape dữ liệu Etsy qua CDP connection.
+    Helper function xử lý logic navigate đến Grok Imagine, click element và nhập text.
     
-    Yêu cầu Chrome đã chạy với --remote-debugging-port=9223.
-    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
+    Args:
+        automation: PlaywrightAutomation instance đã được khởi tạo và kết nối
+        text: Text prompt để nhập vào input
+        logger: Logger instance (nếu None thì dùng print())
+    
+    Returns:
+        dict với keys: success, message, url, input_found
     """
-    search_input = SearchInput(keyword=keyword, pages=pages)
+    log_func = logger.info if logger else print
+    log_warn = logger.warning if logger else print
+    
+    grok_input = GrokInput(text=text)
+    grok_url = "https://grok.com/imagine"
+    
+    log_func(f"Đang điều hướng đến Grok Imagine: {grok_url}")
+    await automation.navigate(grok_url)
+    log_func(f"✓ Đã navigate - title: {await automation.page.title()}")
+
+    # Chờ trang load và các element render (5 giây)
+    log_func("Đang chờ trang load (5 giây)...")
+    await asyncio.sleep(5)
+
+    # Tìm và click vào element cụ thể
+    target_selector = "body > div.group\\/sidebar-wrapper.flex.min-h-svh.w-full.has-\\[\\[data-variant\\=inset\\]\\]\\:bg-sidebar.isolate > div.flex.w-full.h-full.overflow-hidden.\\@container\\/mainview > div > div > div > div.absolute.left-0.bottom-0.w-full.p-3 > div > form > div > div > div.px-12.ps-11.pe-20 > div.relative.z-10 > div > div"
+    
+    log_func(f"Đang tìm element với selector cụ thể...")
+    element_found = False
+    try:
+        # Sử dụng evaluate để querySelector vì selector có ký tự đặc biệt
+        element_found = await automation.page.evaluate(
+            """
+            () => {
+                const selector = "body > div.group\\/sidebar-wrapper.flex.min-h-svh.w-full.has-\\[\\[data-variant\\=inset\\]\\]\\:bg-sidebar.isolate > div.flex.w-full.h-full.overflow-hidden.\\@container\\/mainview > div > div > div > div.absolute.left-0.bottom-0.w-full.p-3 > div > form > div > div > div.px-12.ps-11.pe-20 > div.relative.z-10 > div > div";
+                const element = document.querySelector(selector);
+                if (element) {
+                    element.click();
+                    return true;
+                }
+                return false;
+            }
+            """
+        )
+        
+        if element_found:
+            log_func("✓ Đã tìm thấy và click vào element")
+        else:
+            log_warn("⚠️ Không tìm thấy element với selector cụ thể")
+    except Exception as e:
+        log_warn(f"⚠️ Lỗi khi tìm/click element: {e}")
+
+    # Đợi 2 giây sau khi click
+    log_func("Đang đợi 2 giây sau khi click...")
+    await asyncio.sleep(2)
+
+    # Tìm input field để nhập text
+    log_func("Đang tìm input field để nhập text...")
+    input_selectors = [
+        "textarea[placeholder*='message' i]",
+        "textarea[placeholder*='ask' i]",
+        "textarea[placeholder*='chat' i]",
+        "textarea[placeholder*='imagine' i]",
+        "textarea[placeholder*='describe' i]",
+        "textarea[aria-label*='message' i]",
+        "textarea[aria-label*='input' i]",
+        "textarea",
+        "input[type='text'][placeholder*='message' i]",
+        "[contenteditable='true']",
+        ".chat-input",
+        "#chat-input",
+    ]
+
+    input_element = None
+    for selector in input_selectors:
+        try:
+            input_element = await automation.page.query_selector(selector)
+            if input_element:
+                log_func(f"✓ Tìm thấy input với selector: {selector}")
+                break
+        except Exception as e:
+            continue
+
+    if not input_element:
+        # Thử tìm bất kỳ textarea hoặc contenteditable nào
+        try:
+            input_element = await automation.page.query_selector("textarea")
+            if not input_element:
+                input_element = await automation.page.query_selector("[contenteditable='true']")
+        except Exception as e:
+            pass
+
+    input_found = input_element is not None
+    if input_element:
+        # Nhập prompt vào input để gen video
+        log_func(f"Đang nhập prompt vào input field...")
+        await input_element.fill(grok_input.text)
+        log_func(f"✓ Đã nhập prompt thành công")
+    else:
+        log_warn("⚠️ Không tìm thấy input field để nhập text")
+
+    current_url = automation.page.url
+    page_title = await automation.page.title()
+    
+    log_func(f"✓ Hoàn thành")
+    log_func(f"  URL hiện tại: {current_url}")
+    log_func(f"  Title: {page_title}")
+
+    message = f"Đã navigate đến Grok Imagine và nhập prompt để gen video thành công"
+    if not input_found:
+        message += " (không tìm thấy input field, chỉ navigate)"
+    
+    return {
+        "success": True,
+        "message": message,
+        "url": current_url,
+        "input_found": input_found
+    }
+
+
+async def grok_gen_video_via_cdp(text: str = ""):
+    """
+    Gen video với Grok Imagine qua CDP connection.
+    
+    Navigate đến Grok Imagine (https://grok.com/imagine) và nhập prompt text để tạo video.
+    Yêu cầu Chrome đã chạy với --remote-debugging-port=9224.
+    """
+    if not text:
+        print("⚠️ Text không được để trống")
+        return {
+            "success": False,
+            "error": "Text không được để trống"
+        }
+    
     print("=" * 60)
-    print(f"Bắt đầu crawl Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
+    print(f"Bắt đầu gen video với Grok: prompt='{text[:50]}...'")
     print("=" * 60)
 
     automation = PlaywrightAutomation()
-    all_data = {}
 
     try:
         # Kết nối với Chrome đang chạy qua CDP
-        # CDP endpoint mặc định: http://localhost:9223
-        # Chrome phải được khởi động trước với --remote-debugging-port=9223
-        cdp_url = "http://localhost:9223"
+        cdp_url = "http://localhost:9224"
         print(f"Đang kết nối với Chrome qua CDP tại {cdp_url}...")
         await automation.connect_over_cdp(cdp_url)
         print("✓ Đã kết nối thành công!")
 
-        for page_num in range(1, search_input.pages + 1):
-            target_url = (
-                f"https://www.etsy.com/search?q={quote_plus(search_input.keyword)}"
-                f"&page={page_num}&ref=pagination"
-            )
-            print(f"Đang điều hướng đến trang {page_num}: {target_url}")
-            await automation.navigate(target_url)
-            print(f"✓ Trang {page_num} - title: {await automation.page.title()}")
-
-            # Chờ trang tải ổn định (10 giây)
-            # Etsy là SPA (Single Page Application), cần thời gian để render content
-            # Có thể cần điều chỉnh thời gian chờ tùy theo tốc độ mạng
-            await asyncio.sleep(10)
-
-            print("Đang lấy body và trích xuất dữ liệu...")
-            try:
-                # Extract HTML body từ page
-                # Clone body để không ảnh hưởng đến DOM gốc
-                # Loại bỏ script và style tags để giảm kích thước dữ liệu
-                body_html = await automation.page.evaluate(
-                    """
-                    () => {
-                        const clone = document.body.cloneNode(true);
-                        clone.querySelectorAll('script, style').forEach((el) => el.remove());
-                        return clone.outerHTML;
-                    }
-                    """
-                )
-
-                # Normalize whitespace (thay nhiều spaces/tabs/newlines bằng 1 space)
-                cleaned_body = re.sub(r"\s+", " ", body_html).strip()
-
-                # Trích xuất dữ liệu HeyEtsy từ body HTML
-                # Parser tìm các pattern đặc biệt trong HTML để extract product info
-                extracted = extract_heyetsy_data(cleaned_body)
-                
-                # Lọc và deduplicate theo listing_id
-                # Chỉ lấy items có title và image hợp lệ
-                for item in extracted:
-                    if not item.get("title") or not item.get("image"):
-                        continue
-                    lid = item.get("listing_id")
-                    if lid and lid not in all_data:
-                        all_data[lid] = item
-
-                print(f"✓ Trang {page_num}: trích được {len(extracted)} mục (tổng duy nhất: {len(all_data)})")
-            except Exception as e:
-                print(f"❌ Lỗi khi xử lý trang {page_num}: {e}")
-
-        # Gửi dữ liệu tới webhook
-        if all_data:
-            try:
-                json_payload = _payload_to_json_bytes(all_data.values())
-                print(f"Đang gửi {len(all_data)} mục tới webhook: {WEBHOOK_URL}")
-                await asyncio.to_thread(_post_json, WEBHOOK_URL, json_payload)
-                print("✓ Đã gửi dữ liệu thành công!")
-            except Exception as e:
-                print(f"❌ Lỗi khi gửi webhook: {e}")
-        else:
-            print("⚠️ Không có dữ liệu để gửi.")
+        # Gọi hàm helper để xử lý logic
+        result = await _grok_imagine_interact(automation, text, logger=None)
 
         await automation.detach()
-        return {
-            "success": True,
-            "count": len(all_data),
-            "message": f"Đã crawl xong {len(all_data)} sản phẩm từ {search_input.pages} trang."
-        }
+        return result
 
     except Exception as e:
-        print(f"❌ Lỗi trong quá trình scrape: {e}")
+        print(f"❌ Lỗi trong quá trình gen video với Grok: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+async def grok_gen_video_direct(text: str = ""):
+    """
+    Gen video với Grok Imagine bằng cách launch Chrome trực tiếp (không qua CDP).
+    
+    Navigate đến Grok Imagine (https://grok.com/imagine) và nhập prompt text để tạo video.
+    """
+    if not text:
+        return {
+            "success": False,
+            "error": "Text không được để trống"
+        }
+    
+    automation = PlaywrightAutomation(headless=False)
+
+    try:
+        # Launch Chrome trực tiếp
+        await automation.launch()
+
+        # Gọi hàm helper để xử lý logic (không dùng logger vì đây là direct launch)
+        result = await _grok_imagine_interact(automation, text, logger=None)
+
+        await automation.detach()
+        return result
+
+    except Exception as e:
         return {
             "success": False,
             "error": str(e)
@@ -143,17 +216,16 @@ async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
 
 
 async def connect_to_chrome_via_cdp():
-    """Entry point cho CLI - nhận keyword và pages từ command line."""
+    """Entry point cho CLI - nhận text prompt từ command line để gen video với Grok."""
 
-    # Nhận từ khóa và số trang (CLI: arg1=keyword, arg2=pages)
-    keyword = sys.argv[1] if len(sys.argv) > 1 else "t-shirt"
-    pages_arg = sys.argv[2] if len(sys.argv) > 2 else None
-    try:
-        pages_val = int(pages_arg) if pages_arg is not None else 5
-    except Exception:
-        pages_val = 5
+    # Nhận prompt text từ command line (CLI: arg1=text)
+    text = sys.argv[1] if len(sys.argv) > 1 else ""
+    if not text:
+        print("⚠️ Vui lòng cung cấp prompt text để gen video")
+        print("Sử dụng: python3 src/app/cdp_connection.py \"your prompt text\"")
+        return
 
-    await scrape_etsy_via_cdp(keyword=keyword, pages=pages_val)
+    await grok_gen_video_via_cdp(text=text)
 
 
 if __name__ == "__main__":

@@ -1,97 +1,204 @@
-# Hướng dẫn kết nối Playwright với Chrome đang chạy qua CDP
+# Hướng dẫn chạy CDP Connection cho Grok Video Generation
 
 ## Tổng quan
 
-Playwright có thể kết nối với Chrome đang chạy sẵn thông qua **Chrome DevTools Protocol (CDP)** thay vì tạo Chrome instance mới. Điều này hữu ích khi bạn muốn:
-- Điều khiển Chrome đã mở sẵn của bạn
-- Tái sử dụng session/cookies đã có
-- Debug trong Chrome thật thay vì Chrome ảo
+API này cung cấp endpoint **Grok Video Generation** (`/api/v1/grok/launch`): Gen video với Grok Imagine.
 
-## Cách khởi động Chrome với CDP
+> **Lưu ý**: Xem `docs/API_GUIDE.md` để biết chi tiết về Grok video generation endpoints.
 
-### Bước 1: Khởi động Chrome với remote debugging port
+## Yêu cầu hệ thống
 
-Chrome cần được khởi động với flag `--remote-debugging-port` để bật CDP server.
+- Python 3.11+
+- Google Chrome đã cài đặt
+- Các dependencies trong `requirements.txt`
 
-#### macOS:
+## Cài đặt
+
+### 1. Cài đặt dependencies
+
 ```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
+pip install -r requirements.txt
 ```
 
-#### Linux:
+### 2. Cài đặt Playwright browsers (nếu chưa có)
+
 ```bash
-google-chrome --remote-debugging-port=9223
-# hoặc
-chromium --remote-debugging-port=9223
+python -m playwright install chromium
 ```
 
-#### Windows:
+## Khởi động Chrome với CDP (Tùy chọn)
+
+**Lưu ý**: Nếu dùng endpoint `/api/v1/grok/launch`, không cần khởi động Chrome trước. API sẽ tự động launch Chrome.
+
+Nếu bạn muốn dùng CLI với CDP connection, Chrome phải được khởi động với flag `--remote-debugging-port` trước khi chạy.
+
+### macOS
+
 ```bash
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-debug"
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9224
 ```
 
-### Bước 2: Xác nhận CDP đang chạy
+Hoặc dùng script tiện ích (tự tạo profile tách biệt):
 
-Mở trình duyệt khác và truy cập: `http://localhost:9223/json`
-
-Bạn sẽ thấy JSON list các tab/windows đang mở. Nếu thấy JSON này nghĩa là CDP đã hoạt động.
-
-### Bước 3: Sử dụng trong code
-
-```python
-from src.core.automation import PlaywrightAutomation
-
-automation = PlaywrightAutomation()
-
-# Kết nối với Chrome đang chạy qua CDP
-await automation.connect_over_cdp("http://localhost:9223")
-
-# Sử dụng như bình thường
-await automation.navigate("https://example.com")
+```bash
+./scripts/start_chrome_with_cdp.sh
 ```
+
+### Linux
+
+```bash
+google-chrome --remote-debugging-port=9224
+```
+
+Hoặc:
+
+```bash
+chromium --remote-debugging-port=9224
+```
+
+### Windows
+
+```cmd
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9224 --user-data-dir="C:\temp\chrome-debug"
+```
+
+Hoặc dùng script tiện ích:
+
+```cmd
+scripts\start_chrome_with_cdp.bat
+```
+
+### Kiểm tra CDP đang chạy
+
+Mở trình duyệt và truy cập: `http://localhost:9224/json`
+
+Nếu thấy danh sách các tab đang mở dưới dạng JSON, nghĩa là CDP đã hoạt động.
+
+## Chạy API Server
+
+### Cách 1: Chạy trực tiếp với Python
+
+```bash
+python src/app/api_server.py
+```
+
+### Cách 2: Chạy với uvicorn (khuyến nghị)
+
+```bash
+uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5674
+```
+
+**Các tham số:**
+- `--reload`: Tự động reload khi code thay đổi (chỉ dùng khi development)
+- `--host 0.0.0.0`: Cho phép truy cập từ các máy khác trong mạng
+- `--port 5674`: Port API (có thể thay đổi, mặc định trong docs là 5674)
+
+### Cách 3: Chạy production với uvicorn
+
+```bash
+uvicorn src.app.api_server:app --host 0.0.0.0 --port 5674 --workers 4
+```
+
+## Truy cập API
+
+Sau khi server chạy, bạn có thể:
+
+1. **Truy cập Swagger UI** (tự động): `http://localhost:5674/docs`
+2. **Truy cập ReDoc**: `http://localhost:5674/redoc`
+
+## Các Endpoints
+
+API hiện tại cung cấp endpoint **Grok Video Generation**. Xem `docs/API_GUIDE.md` để biết chi tiết về:
+
+- `/api/v1/grok/launch` - Gen video với Grok Imagine
+
+## Xử lý lỗi thường gặp
+
+### 1. Lỗi: "Connection refused" hoặc "Cannot connect to CDP"
+
+**Nguyên nhân:** Chrome chưa được khởi động với CDP hoặc port không đúng (chỉ áp dụng khi dùng CLI với CDP).
+
+**Giải pháp:**
+- Nếu dùng API endpoint `/api/v1/grok/launch`, không cần Chrome chạy trước
+- Nếu dùng CLI với CDP, kiểm tra Chrome đã khởi động với `--remote-debugging-port=9224` chưa
+- Truy cập `http://localhost:9224/json` để xác nhận CDP đang chạy
+- Kiểm tra port có bị conflict không
+
+### 2. Lỗi: "ModuleNotFoundError: No module named 'fastapi'"
+
+**Nguyên nhân:** Chưa cài đặt dependencies.
+
+**Giải pháp:**
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Lỗi: "Playwright browser not found"
+
+**Nguyên nhân:** Chưa cài đặt Playwright browsers.
+
+**Giải pháp:**
+```bash
+playwright install chromium
+```
+
+### 4. Lỗi khi launch Chrome
+
+**Nguyên nhân:** Chrome chưa được cài đặt hoặc không tìm thấy.
+
+**Giải pháp:**
+- Đảm bảo Chrome đã được cài đặt trên hệ thống
+- Kiểm tra Chrome có trong PATH không
+- Thử launch Chrome thủ công để xác nhận
 
 ## Lưu ý quan trọng
 
-1. **Port mặc định**: 9223 là port phổ biến, nhưng bạn có thể dùng port khác
-2. **Chỉ một Chrome instance**: Mỗi port chỉ có thể dùng cho một Chrome instance
-3. **Security**: CDP không có authentication mặc định, chỉ nên dùng trên localhost
-4. **Format endpoint**: 
-- `http://localhost:9223` (Playwright tự convert sang WebSocket)
-- `ws://localhost:9223` (WebSocket trực tiếp)
+1. **API endpoint không cần Chrome chạy trước**: Endpoint `/api/v1/grok/launch` sẽ tự động launch Chrome
+2. **CLI với CDP cần Chrome chạy trước**: Nếu dùng CLI `cdp_connection.py`, Chrome phải được khởi động với CDP trước
+3. **Không đóng Chrome** trong khi API đang xử lý requests (nếu dùng CDP)
+4. **Browser sẽ không bị đóng** sau khi xử lý xong (chỉ detach khỏi Playwright)
+5. **API xử lý tuần tự** - mỗi request xử lý một cái một
 
-## Ví dụ đầy đủ
+## Dừng server
 
-Xem file `src/app/cdp_connection.py` để có ví dụ hoàn chỉnh.
+Nhấn `Ctrl+C` trong terminal đang chạy server.
 
-### Ví dụ script HeyEtsy (CLI)
+## Dừng Chrome với CDP
 
+### macOS/Linux:
 ```bash
-# keyword mặc định "t-shirt", pages mặc định 5
-python src/app/cdp_connection.py "handmade bag" 5
+./scripts/stop_chrome_with_cdp.sh
 ```
 
-**Luồng chính:**
-1. Kết nối Chrome đang mở qua CDP tại `localhost:9223`
-2. Duyệt các trang tìm kiếm Etsy (page 1 đến page N)
-3. Extract HTML body (loại bỏ script/style tags)
-4. Trích dữ liệu HeyEtsy bằng `extract_heyetsy_data` từ `src/utils/heyetsy_parser.py`
-5. Lọc và deduplicate theo `listing_id`
-6. Gửi dữ liệu tới webhook: `https://n8n.supover.com/webhook/crawler-etsy`
-7. Detach automation (giữ browser mở)
+### Windows:
+```cmd
+scripts\stop_chrome_with_cdp.bat
+```
 
-**Lưu ý:** Dữ liệu được gửi tới webhook, không lưu file local. Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết.
+Hoặc đóng Chrome thủ công.
 
 ## Troubleshooting
 
-### Lỗi: "Target closed" hoặc "Connection refused"
-- Kiểm tra Chrome đã khởi động với `--remote-debugging-port` chưa
-- Kiểm tra port có đúng không (mặc định 9223)
-- Thử truy cập `http://localhost:9223/json` để xác nhận
+### Kiểm tra logs
 
-### Lỗi: "Protocol error"
-- Đảm bảo Chrome version tương thích với Playwright
-- Thử restart Chrome với CDP flag
+API server sẽ log các thông tin quan trọng:
+- Request nhận được
+- Trang đang navigate
+- Element đã tìm thấy/click
+- Input field đã tìm thấy/nhập text
+- Lỗi nếu có
 
-### Không thấy tab hiện có
-- `connect_over_cdp()` sẽ tự động tìm context/page hiện có
-- Nếu không có, sẽ tạo context/page mới
+### Debug mode
+
+Để xem chi tiết hơn, có thể thay đổi log level trong `api_server.py`:
+
+```python
+logging.basicConfig(level=logging.DEBUG)
+```
+
+## Liên hệ và hỗ trợ
+
+Nếu gặp vấn đề, kiểm tra:
+1. Logs của API server
+2. Chrome DevTools Console (F12)
+3. CDP endpoint: `http://localhost:9224/json` (nếu dùng CDP)

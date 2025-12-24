@@ -1,14 +1,15 @@
-# Hướng dẫn chạy CDP Connection API
+# Hướng dẫn sử dụng Grok Video Generation API
 
 ## Tổng quan
 
-API này cung cấp endpoint **Etsy Scraping** (`/api/v1/etsy/scrape`): Crawl dữ liệu sản phẩm từ Etsy qua CDP connection.
+API server cung cấp endpoint để gen video với Grok Imagine:
 
-> **Lưu ý**: Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về Etsy scraping endpoints.
+1. **Grok Launch** (`/api/v1/grok/launch`): Launch Chrome, navigate đến Grok Imagine và nhập prompt để gen video
 
 ## Yêu cầu hệ thống
+
 - Python 3.11+
-- Google Chrome đã cài đặt
+- Google Chrome
 - Các dependencies trong `requirements.txt`
 
 ## Cài đặt
@@ -19,57 +20,11 @@ API này cung cấp endpoint **Etsy Scraping** (`/api/v1/etsy/scrape`): Crawl d�
 pip install -r requirements.txt
 ```
 
-### 2. Cài đặt Playwright browsers (nếu chưa có)
+### 2. Cài đặt Playwright browsers
 
 ```bash
 python -m playwright install chromium
 ```
-
-## Khởi động Chrome với CDP
-
-**Quan trọng**: Chrome phải được khởi động với flag `--remote-debugging-port` trước khi chạy API.
-
-### macOS
-
-```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223
-```
-
-Hoặc dùng script tiện ích (tự tạo profile tách biệt):
-
-```bash
-./scripts/start_chrome_with_cdp.sh
-```
-
-### Linux
-
-```bash
-google-chrome --remote-debugging-port=9223
-```
-
-Hoặc:
-
-```bash
-chromium --remote-debugging-port=9223
-```
-
-### Windows
-
-```cmd
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\temp\chrome-debug"
-```
-
-Hoặc dùng script tiện ích:
-
-```cmd
-scripts\start_chrome_with_cdp.bat
-```
-
-### Kiểm tra CDP đang chạy
-
-Mở trình duyệt và truy cập: `http://localhost:9223/json`
-
-Nếu thấy danh sách các tab đang mở dưới dạng JSON, nghĩa là CDP đã hoạt động.
 
 ## Chạy API Server
 
@@ -88,7 +43,7 @@ uvicorn src.app.api_server:app --reload --host 0.0.0.0 --port 5674
 **Các tham số:**
 - `--reload`: Tự động reload khi code thay đổi (chỉ dùng khi development)
 - `--host 0.0.0.0`: Cho phép truy cập từ các máy khác trong mạng
-- `--port 5674`: Port API (có thể thay đổi, mặc định trong docs là 5674)
+- `--port 5674`: Port API (có thể thay đổi trong `api_server.py`)
 
 ### Cách 3: Chạy production với uvicorn
 
@@ -100,80 +55,155 @@ uvicorn src.app.api_server:app --host 0.0.0.0 --port 5674 --workers 4
 
 Sau khi server chạy, bạn có thể:
 
-1. **Truy cập Swagger UI** (tự động): `http://localhost:5674/docs`
+1. **Truy cập Swagger UI**: `http://localhost:5674/docs`
 2. **Truy cập ReDoc**: `http://localhost:5674/redoc`
-3. **Health check**: `http://localhost:5674/health`
 
-## Các Endpoints
+## Endpoint: Grok Video Generation
 
-API hiện tại chỉ cung cấp endpoint **Etsy Scraping**. Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về:
+### POST `/api/v1/grok/launch`
 
-- `/api/v1/etsy/scrape` - Etsy scraping qua CDP connection
-- `/api/v1/etsy/scrape_hidemyacc` - Etsy scraping với HideMyAcc profile
+Launch Chrome, navigate đến Grok Imagine (https://grok.com/imagine) và nhập prompt để gen video.
+
+#### Yêu cầu
+
+- Chrome phải được cài đặt trên hệ thống
+- Không cần Chrome đang chạy trước (API sẽ tự động launch)
+
+#### Request Body
+
+```json
+{
+    "text": "A beautiful sunset over the ocean with birds flying"
+}
+```
+
+**Parameters:**
+- `text` (string, required): Prompt text để tạo video (không được để trống)
+
+#### Response
+
+```json
+{
+    "success": true,
+    "message": "Đã navigate đến Grok Imagine và nhập prompt để gen video thành công",
+    "url": "https://grok.com/imagine",
+    "error": null
+}
+```
+
+**Response Fields:**
+- `success` (boolean): Trạng thái thành công/thất bại
+- `message` (string): Thông báo mô tả kết quả
+- `url` (string, optional): URL hiện tại sau khi navigate
+- `error` (string, optional): Thông báo lỗi nếu có
+
+#### Ví dụ với curl
+
+```bash
+curl -X POST "http://localhost:5674/api/v1/grok/launch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "A beautiful sunset over the ocean with birds flying"
+  }'
+```
+
+#### Ví dụ với Python
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:5674/api/v1/grok/launch",
+    json={
+        "text": "A beautiful sunset over the ocean with birds flying"
+    },
+    timeout=60
+)
+
+result = response.json()
+print(f"Success: {result['success']}")
+print(f"URL: {result.get('url')}")
+print(f"Message: {result['message']}")
+```
+
+## Flow hoạt động
+
+### Grok Launch Flow
+
+1. Launch Chrome trực tiếp (không qua CDP)
+2. Navigate đến https://grok.com/imagine
+3. Chờ 5 giây để trang load và các element render
+4. Tìm và click vào element cụ thể (input field wrapper)
+5. Đợi 2 giây sau khi click
+6. Tìm input field (textarea hoặc contenteditable)
+7. Nhập prompt text vào input field
+8. Detach automation (giữ browser mở để tiếp tục sử dụng)
+
+## Cấu hình
+
+Các cấu hình có thể chỉnh trong `src/app/api_server.py`:
+
+```python
+# Host & port cho API (Uvicorn)
+CONFIG_API_HOST = "0.0.0.0"
+CONFIG_API_PORT = 5674
+
+# CDP port cho Chrome (nếu dùng CDP connection)
+CONFIG_CDP_PORT = 9224
+```
 
 ## Xử lý lỗi thường gặp
 
-### 1. Lỗi: "Connection refused" hoặc "Cannot connect to CDP"
+### 1. Lỗi khi launch Grok
 
-**Nguyên nhân:** Chrome chưa được khởi động với CDP hoặc port không đúng.
-
-**Giải pháp:**
-- Kiểm tra Chrome đã khởi động với `--remote-debugging-port=9223` chưa
-- Truy cập `http://localhost:9223/json` để xác nhận CDP đang chạy
-- Kiểm tra port có bị conflict không
-
-### 2. Lỗi: "ModuleNotFoundError: No module named 'fastapi'"
-
-**Nguyên nhân:** Chưa cài đặt dependencies.
+**Nguyên nhân:** Chrome chưa được cài đặt hoặc không tìm thấy.
 
 **Giải pháp:**
-```bash
-pip install -r requirements.txt
-```
+- Đảm bảo Chrome đã được cài đặt trên hệ thống
+- Kiểm tra Chrome có trong PATH không
+- Thử launch Chrome thủ công để xác nhận
 
-### 3. Lỗi: "Playwright browser not found"
+### 2. Lỗi: "Text không được để trống"
 
-**Nguyên nhân:** Chưa cài đặt Playwright browsers.
-
-**Giải pháp:**
-```bash
-playwright install chromium
-```
-
-### 4. API chạy nhưng không kết nối được với Chrome
-
-**Nguyên nhân:** Chrome đã đóng hoặc CDP không còn hoạt động.
+**Nguyên nhân:** Request body không có field `text` hoặc `text` là chuỗi rỗng.
 
 **Giải pháp:**
-- Khởi động lại Chrome với CDP
-- Kiểm tra Chrome có đang chạy không
-- Thử truy cập `http://localhost:9223/json` để xác nhận
+- Đảm bảo request body có field `text` với giá trị không rỗng
+- Kiểm tra JSON format có đúng không
+
+### 3. Lỗi: "Không tìm thấy input field"
+
+**Nguyên nhân:** Cấu trúc HTML của Grok Imagine có thể đã thay đổi.
+
+**Giải pháp:**
+- Kiểm tra xem trang Grok Imagine có load đầy đủ không
+- Có thể cần tăng thời gian chờ (hiện tại 5 giây)
+- Kiểm tra selector có còn đúng không
 
 ## Lưu ý quan trọng
 
-1. **Chrome phải được khởi động trước** (cho endpoint `/api/v1/etsy/scrape`)
-2. **Không đóng Chrome** trong khi API đang xử lý requests
-3. **Browser sẽ không bị đóng** sau khi xử lý xong (chỉ detach khỏi Playwright)
-4. **API xử lý tuần tự** - mỗi request xử lý một cái một
-5. **Dữ liệu được gửi tới webhook** sau khi scrape xong
+1. **Browser được giữ mở**: Sau khi nhập prompt, browser sẽ được giữ mở (detach, không close) để có thể tiếp tục sử dụng hoặc debug.
 
-## Dừng server
+2. **Timeout**: Khuyến nghị 60 giây cho request.
 
-Nhấn `Ctrl+C` trong terminal đang chạy server.
+3. **Xử lý tuần tự**: Mỗi request xử lý tuần tự, không song song.
 
-## Dừng Chrome với CDP
+4. **Input field detection**: API sẽ thử nhiều selector khác nhau để tìm input field, bao gồm:
+   - `textarea[placeholder*='message']`
+   - `textarea[placeholder*='ask']`
+   - `textarea[placeholder*='imagine']`
+   - `textarea`
+   - `[contenteditable='true']`
+   - và các selector khác
 
-### macOS/Linux:
+## Sử dụng CLI (không qua API)
+
+### CDP Connection CLI
+
 ```bash
-./scripts/stop_chrome_with_cdp.sh
+# Cần Chrome đã chạy với --remote-debugging-port=9224
+python src/app/cdp_connection.py "your prompt text"
 ```
-
-### Windows:
-```cmd
-scripts\stop_chrome_with_cdp.bat
-```
-
-Hoặc đóng Chrome thủ công.
 
 ## Troubleshooting
 
@@ -181,21 +211,29 @@ Hoặc đóng Chrome thủ công.
 
 API server sẽ log các thông tin quan trọng:
 - Request nhận được
-- Trang đang xử lý
-- Số lượng sản phẩm đã extract
+- Trang đang navigate
+- Element đã tìm thấy/click
+- Input field đã tìm thấy/nhập text
 - Lỗi nếu có
 
 ### Debug mode
 
-Để xem chi tiết hơn, có thể thay đổi log level trong `api_server.py`:
+Để xem chi tiết hơn, thay đổi log level trong `api_server.py`:
 
 ```python
 logging.basicConfig(level=logging.DEBUG)
 ```
 
+### Kiểm tra browser
+
+Sau khi API chạy, browser sẽ được giữ mở. Bạn có thể:
+- Kiểm tra xem prompt đã được nhập vào input field chưa
+- Kiểm tra console (F12) để xem có lỗi JavaScript không
+- Thử submit prompt thủ công để xác nhận
+
 ## Liên hệ và hỗ trợ
 
 Nếu gặp vấn đề, kiểm tra:
 1. Logs của API server
-2. Chrome DevTools Console (F12)
-3. CDP endpoint: `http://localhost:9223/json`
+2. Browser DevTools Console (F12)
+3. Kiểm tra xem Grok Imagine có thay đổi cấu trúc HTML không

@@ -19,7 +19,7 @@ The CDP setup uses a separate, temporary profile - it does NOT affect your norma
 ### CDP Temporary Profile
 - **Location (ví dụ)**: `/tmp/chrome-cdp-profile/` (macOS/Linux) hoặc một thư mục bất kỳ bạn chỉ định với `--user-data-dir`
 - **Contains**: Empty profile created fresh for testing
-- **How to open**: Start Chrome với các flag `--user-data-dir=...` và `--remote-debugging-port=9223` như hướng dẫn trong tài liệu CDP
+- **How to open**: Start Chrome với các flag `--user-data-dir=...` và `--remote-debugging-port=9224` như hướng dẫn trong tài liệu CDP
 - **Purpose**: Allow Playwright to connect and automate without affecting your real data
 
 ---
@@ -43,12 +43,12 @@ Your history, bookmarks, and everything will be back instantly.
 ```bash
 # macOS (ví dụ)
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9223 \
+  --remote-debugging-port=9224 \
   --user-data-dir=/tmp/chrome-cdp-profile
 
 # Windows (ví dụ)
 "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
-  --remote-debugging-port=9223 ^
+  --remote-debugging-port=9224 ^
   --user-data-dir="C:\tmp\chrome-cdp-profile"
 ```
 
@@ -91,7 +91,7 @@ This starts a fresh, empty Chrome for testing purposes.
 | Open normal Chrome | Click Chrome icon (Applications/Dock) |
 | Start CDP Chrome | `./scripts/start_chrome_with_cdp.sh` |
 | Close all Chrome | `pkill "Google Chrome"` |
-| Check CDP is running | `curl http://localhost:9223/json` |
+| Check CDP is running | `curl http://localhost:9224/json` |
 | Delete CDP profile | `rm -rf /tmp/chrome-cdp-profile` |
 
 ---

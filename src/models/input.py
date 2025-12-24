@@ -9,57 +9,16 @@ class ViewportConfig(BaseModel):
     height: int = 720
 
 
-class SearchInput(BaseModel):
-    """Simple search input for Etsy scraping."""
+class GrokInput(BaseModel):
+    """Input model for Grok interaction."""
 
-    keyword: str = Field(default="t-shirt", min_length=1)
-    pages: int = Field(default=5, ge=1, le=20)
+    text: str = Field(default="", min_length=1, description="Text to input into Grok")
 
-    @field_validator("keyword")
+    @field_validator("text")
     @classmethod
-    def strip_keyword(cls, v: str):
-        cleaned = v.strip()
-        return cleaned or "t-shirt"
-
-
-class HideMyAccSearchInput(BaseModel):
-    """
-    Search input for Etsy scraping với HideMyAcc profile.
-    
-    Có 2 trường hợp sử dụng:
-    1. Không có proxy: chỉ truyền profile_id, keyword, pages
-    2. Có proxy: truyền thêm proxy_server, proxy_username, proxy_password
-    """
-
-    profile_id: str = Field(..., description="HideMyAcc profile ID (bắt buộc)")
-    keyword: str = Field(..., min_length=1, description="Từ khóa tìm kiếm (bắt buộc)")
-    pages: int = Field(..., ge=1, le=20, description="Số trang cần crawl (bắt buộc)")
-    proxy_server: Optional[str] = Field(default=None, description="Proxy server address (ví dụ: http://149.20.240.190:4444)")
-    proxy_username: Optional[str] = Field(default=None, description="Proxy username (bắt buộc nếu có proxy_server)")
-    proxy_password: Optional[str] = Field(default=None, description="Proxy password (bắt buộc nếu có proxy_server)")
-
-    @field_validator("keyword")
-    @classmethod
-    def strip_keyword(cls, v: str):
+    def strip_text(cls, v: str):
         cleaned = v.strip()
         if not cleaned:
-            raise ValueError("keyword không được để trống")
+            raise ValueError("Text cannot be empty")
         return cleaned
-    
-    @model_validator(mode='after')
-    def validate_proxy_fields(self):
-        """Đảm bảo nếu có proxy_server thì phải có đầy đủ username và password"""
-        proxy_server = self.proxy_server
-        proxy_username = self.proxy_username
-        proxy_password = self.proxy_password
-        
-        # Nếu có proxy_server thì phải có đầy đủ username và password
-        if proxy_server:
-            if not proxy_username or not proxy_password:
-                raise ValueError("Nếu có proxy_server thì phải có đầy đủ proxy_username và proxy_password")
-        
-        # Nếu có proxy_username hoặc proxy_password thì phải có proxy_server
-        if (proxy_username or proxy_password) and not proxy_server:
-            raise ValueError("Nếu có proxy_username hoặc proxy_password thì phải có proxy_server")
-        
-        return self
+

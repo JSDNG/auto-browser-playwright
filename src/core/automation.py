@@ -46,7 +46,7 @@ class PlaywrightAutomation:
         
         Args:
             user_data_dir: Đường dẫn đến user data directory của profile
-            executable_path: Đường dẫn đến browser executable (ví dụ: Marco browser từ HideMyAcc)
+            executable_path: Đường dẫn đến browser executable
             channel: Browser channel (ví dụ: "chrome") - chỉ dùng nếu không có executable_path
             proxy: Proxy settings dict với keys: server, username (optional), password (optional)
                    Ví dụ: {"server": "http://proxy:port", "username": "user", "password": "pass"}
@@ -111,7 +111,7 @@ class PlaywrightAutomation:
             launch_options["proxy"] = proxy_config
             print(f"[DEBUG] Proxy config: server={proxy_config['server']}, has_username={bool(proxy_config.get('username'))}, has_password={bool(proxy_config.get('password'))}")
         
-        # Ưu tiên executable_path (ví dụ: Marco browser từ HideMyAcc)
+        # Ưu tiên executable_path
         if executable_path:
             import os
             # Kiểm tra file có tồn tại không
@@ -125,7 +125,7 @@ class PlaywrightAutomation:
         # Nếu không có cả hai, Playwright sẽ dùng browser mặc định
         # Nếu yêu cầu bắt buộc có executable_path mà lại không set được, raise để tránh fallback Chromium mặc định
         if require_executable and "executable_path" not in launch_options:
-            raise RuntimeError("Executable path bắt buộc nhưng không tìm thấy. Kiểm tra lại Marco/Chrome path.")
+            raise RuntimeError("Executable path bắt buộc nhưng không tìm thấy. Kiểm tra lại Chrome path.")
         
         # Debug: In ra một số thông tin quan trọng
         print()
@@ -163,7 +163,7 @@ class PlaywrightAutomation:
         # Context chứa browser instance bên trong
         self.browser = None  # Không có browser object riêng với persistent context
 
-    async def connect_over_cdp(self, cdp_endpoint: str = "http://localhost:9223"):
+    async def connect_over_cdp(self, cdp_endpoint: str = "http://localhost:9224"):
         """
         Kết nối với Chrome instance đang chạy qua CDP (Chrome DevTools Protocol)
         
@@ -172,18 +172,18 @@ class PlaywrightAutomation:
         để mở CDP port.
         
         Args:
-            cdp_endpoint: CDP endpoint URL (default: http://localhost:9223)
+            cdp_endpoint: CDP endpoint URL (default: http://localhost:9224)
                           Format: http://localhost:PORT hoặc ws://localhost:PORT
                           Playwright tự động convert http:// sang ws://
         
         Yêu cầu:
             Chrome phải được khởi động với flag: --remote-debugging-port=PORT
-            Ví dụ: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9223
-            Hoặc: Marco browser được launch với --remote-debugging-port trong extra_args
+            Ví dụ: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9224
+            Hoặc: Chrome được launch với --remote-debugging-port trong extra_args
         
         Lưu ý:
             - Method này điều khiển browser QUA CDP (khác với launch_with_profile điều khiển trực tiếp)
-            - Dùng khi browser đã được launch sẵn (ví dụ: từ HideMyAcc app hoặc launch trước đó)
+            - Dùng khi browser đã được launch sẵn (ví dụ: launch trước đó)
             - Nếu browser chưa chạy, dùng launch_with_profile thay vì method này
         """
         self.playwright = await async_playwright().start()
