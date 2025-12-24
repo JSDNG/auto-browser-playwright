@@ -47,38 +47,6 @@ async def _grok_imagine_interact(automation: PlaywrightAutomation, text: str, lo
     log_func("Đang chờ trang load (5 giây)...")
     await asyncio.sleep(5)
 
-    # Tìm và click vào element cụ thể
-    target_selector = "body > div.group\\/sidebar-wrapper.flex.min-h-svh.w-full.has-\\[\\[data-variant\\=inset\\]\\]\\:bg-sidebar.isolate > div.flex.w-full.h-full.overflow-hidden.\\@container\\/mainview > div > div > div > div.absolute.left-0.bottom-0.w-full.p-3 > div > form > div > div > div.px-12.ps-11.pe-20 > div.relative.z-10 > div > div"
-    
-    log_func(f"Đang tìm element với selector cụ thể...")
-    element_found = False
-    try:
-        # Sử dụng evaluate để querySelector vì selector có ký tự đặc biệt
-        element_found = await automation.page.evaluate(
-            """
-            () => {
-                const selector = "body > div.group\\/sidebar-wrapper.flex.min-h-svh.w-full.has-\\[\\[data-variant\\=inset\\]\\]\\:bg-sidebar.isolate > div.flex.w-full.h-full.overflow-hidden.\\@container\\/mainview > div > div > div > div.absolute.left-0.bottom-0.w-full.p-3 > div > form > div > div > div.px-12.ps-11.pe-20 > div.relative.z-10 > div > div";
-                const element = document.querySelector(selector);
-                if (element) {
-                    element.click();
-                    return true;
-                }
-                return false;
-            }
-            """
-        )
-        
-        if element_found:
-            log_func("✓ Đã tìm thấy và click vào element")
-        else:
-            log_warn("⚠️ Không tìm thấy element với selector cụ thể")
-    except Exception as e:
-        log_warn(f"⚠️ Lỗi khi tìm/click element: {e}")
-
-    # Đợi 2 giây sau khi click
-    log_func("Đang đợi 2 giây sau khi click...")
-    await asyncio.sleep(2)
-
     # Tìm input field để nhập text
     log_func("Đang tìm input field để nhập text...")
     input_selectors = [
@@ -121,6 +89,100 @@ async def _grok_imagine_interact(automation: PlaywrightAutomation, text: str, lo
         log_func(f"Đang nhập prompt vào input field...")
         await input_element.fill(grok_input.text)
         log_func(f"✓ Đã nhập prompt thành công")
+        
+        # Đợi 5 giây sau khi nhập text
+        log_func("Đang đợi 5 giây sau khi nhập text...")
+        await asyncio.sleep(5)
+        
+        # Tìm và click vào nút submit
+        # Sử dụng cách tìm button từ form với selector đơn giản hơn
+        log_func("Đang tìm nút submit...")
+        button_found = False
+        try:
+            # Cách 1: Tìm button trong form bằng cách tìm từ input element đã có
+            # Tìm form chứa input, sau đó tìm button trong div.ms-auto > div:nth-child(3)
+            button_found = await automation.page.evaluate(
+                """
+                () => {
+                    // Tìm form
+                    const form = document.querySelector('form');
+                    if (!form) return false;
+                    
+                    // Tìm div.ms-auto trong form
+                    const msAutoDiv = form.querySelector('div.ms-auto');
+                    if (!msAutoDiv) return false;
+                    
+                    // Tìm div thứ 3 trong msAutoDiv
+                    const divs = msAutoDiv.querySelectorAll('div');
+                    if (divs.length < 3) return false;
+                    
+                    const thirdDiv = divs[2]; // nth-child(3) = index 2
+                    const button = thirdDiv.querySelector('button');
+                    
+                    if (button) {
+                        button.click();
+                        return true;
+                    }
+                    
+                    return false;
+                }
+                """
+            )
+            
+            if not button_found:
+                # Fallback 1: Tìm button bằng XPath tương đối
+                try:
+                    button_xpath = "//body//form//div[contains(@class, 'ms-auto')]//div[3]/button"
+                    button_element = await automation.page.query_selector(f"xpath={button_xpath}")
+                    if button_element:
+                        await button_element.click()
+                        button_found = True
+                        log_func("✓ Đã tìm thấy và click vào nút submit bằng XPath tương đối")
+                except Exception as e:
+                    log_warn(f"⚠️ Lỗi khi tìm button bằng XPath tương đối: {e}")
+            
+            if not button_found:
+                # Fallback 2: Tìm button bằng full XPath
+                try:
+                    full_xpath = "/html/body/div[2]/div[2]/div/div/div/div[2]/div/form/div/div/div[2]/div[2]/div[2]/div[3]/button"
+                    button_element = await automation.page.query_selector(f"xpath={full_xpath}")
+                    if button_element:
+                        await button_element.click()
+                        button_found = True
+                        log_func("✓ Đã tìm thấy và click vào nút submit bằng full XPath")
+                except Exception as e:
+                    log_warn(f"⚠️ Lỗi khi tìm button bằng full XPath: {e}")
+            
+            if button_found:
+                log_func("✓ Đã tìm thấy và click vào nút submit")
+            else:
+                log_warn("⚠️ Không tìm thấy nút submit với tất cả các cách thử")
+        except Exception as e:
+            log_warn(f"⚠️ Lỗi khi tìm/click nút submit: {e}")
+        
+        # Đợi 60 giây sau khi click nút submit
+        log_func("Đang đợi 60 giây sau khi click nút submit...")
+        await asyncio.sleep(60)
+        
+        # Tìm và click nút download video
+        log_func("Đang tìm nút download video...")
+        download_button_found = False
+        try:
+            download_button_xpath = "/html/body/div[2]/div[2]/div/div/div/main/article/div[2]/div[2]/div/button[1]"
+            download_button_element = await automation.page.query_selector(f"xpath={download_button_xpath}")
+            if download_button_element:
+                await download_button_element.click()
+                download_button_found = True
+                log_func("✓ Đã tìm thấy và click vào nút download video")
+            else:
+                log_warn("⚠️ Không tìm thấy nút download video")
+        except Exception as e:
+            log_warn(f"⚠️ Lỗi khi tìm/click nút download video: {e}")
+        
+        # Đợi thêm 10 giây sau khi click nút download video
+        if download_button_found:
+            log_func("Đang đợi 10 giây sau khi click nút download video...")
+            await asyncio.sleep(10)
     else:
         log_warn("⚠️ Không tìm thấy input field để nhập text")
 
@@ -131,7 +193,7 @@ async def _grok_imagine_interact(automation: PlaywrightAutomation, text: str, lo
     log_func(f"  URL hiện tại: {current_url}")
     log_func(f"  Title: {page_title}")
 
-    message = f"Đã navigate đến Grok Imagine và nhập prompt để gen video thành công"
+    message = f"Đã navigate đến Grok Imagine, nhập prompt để gen video và download video thành công"
     if not input_found:
         message += " (không tìm thấy input field, chỉ navigate)"
     
