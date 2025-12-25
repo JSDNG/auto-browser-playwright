@@ -11,6 +11,7 @@ import asyncio
 import json
 import re
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote_plus
 from urllib.error import HTTPError, URLError
@@ -25,6 +26,40 @@ from src.core.automation import PlaywrightAutomation
 from src.models import SearchInput
 
 WEBHOOK_URL = "https://n8n.supover.com/webhook/crawler-etsy"
+
+
+def _is_created_within_2_months(created_str: str) -> bool:
+    """
+    Kiểm tra xem ngày đăng có trong vòng 2 tháng không.
+    
+    Args:
+        created_str: Chuỗi ngày tháng (có thể là "MM/DD/YYYY" hoặc format khác)
+    
+    Returns:
+        True nếu ngày đăng trong vòng 2 tháng, False nếu không hoặc không parse được
+    """
+    if not created_str:
+        return False
+    
+    try:
+        # Thử parse format MM/DD/YYYY
+        date_match = re.search(r"(\d{2})/(\d{2})/(\d{4})", created_str)
+        if date_match:
+            month, day, year = map(int, date_match.groups())
+            created_date = datetime(year, month, day)
+        else:
+            # Nếu không match format chuẩn, thử parse với các format khác
+            # Hoặc return False nếu không parse được
+            return False
+        
+        # Tính ngày 2 tháng trước
+        two_months_ago = datetime.now() - timedelta(days=60)
+        
+        # Kiểm tra xem ngày đăng có sau ngày 2 tháng trước không
+        return created_date >= two_months_ago
+    except Exception:
+        # Nếu có lỗi khi parse, return False
+        return False
 
 
 def _payload_to_json_bytes(data_iterable):
@@ -104,8 +139,13 @@ async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
                 
                 # Lọc và deduplicate theo listing_id
                 # Chỉ lấy items có title và image hợp lệ
+                # Và chỉ lấy items có ngày đăng trong vòng 2 tháng
                 for item in extracted:
                     if not item.get("title") or not item.get("image"):
+                        continue
+                    # Kiểm tra ngày đăng phải trong vòng 2 tháng
+                    created_date = item.get("created")
+                    if not _is_created_within_2_months(created_date):
                         continue
                     lid = item.get("listing_id")
                     if lid and lid not in all_data:
