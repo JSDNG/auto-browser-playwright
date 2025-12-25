@@ -94,7 +94,7 @@ Server sẽ chạy ở `http://localhost:5674`:
 
 ---
 
-## Etsy Scraping (CDP script & API)
+## SpyEtsy (CDP script & API)
 
 - **Mục đích**: Kết nối Chrome đã mở sẵn qua CDP, duyệt kết quả tìm kiếm Etsy và trích dữ liệu từ overlay HeyEtsy.
 - **Chạy CLI**:
@@ -102,23 +102,23 @@ Server sẽ chạy ở `http://localhost:5674`:
   # keyword mặc định "t-shirt", pages mặc định 5
   python src/app/cdp_connection.py "handmade bag" 5
   ```
-- **Chạy API**: Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về 2 endpoints:
-  - `/api/v1/etsy/scrape` - CDP connection
-  - `/api/v1/etsy/scrape_hidemyacc` - HideMyAcc profile
+- **Chạy API**: Xem `docs/ETSY_SPY_API.md` để biết chi tiết về 2 endpoints:
+  - `/api/v1/etsy/spy` - CDP connection
+  - `/api/v1/etsy/spy_hidemyacc` - HideMyAcc profile
 - **Cách làm**: 
-  - Script dùng `PlaywrightAutomation.connect_over_cdp` → điều hướng từng trang tìm kiếm Etsy → đợi trang ổn định (10 giây) → `extract_heyetsy_data` (trong `src/utils/heyetsy_parser.py`) để parse dữ liệu → deduplicate theo `listing_id` → gửi dữ liệu tới webhook `https://n8n.supover.com/webhook/crawler-etsy`.
+  - Script dùng `PlaywrightAutomation.connect_over_cdp` → điều hướng từng trang tìm kiếm Etsy → đợi trang ổn định (10 giây) → `extract_heyetsy_data` (trong `src/utils/heyetsy_parser.py`) để parse dữ liệu → deduplicate theo `listing_id` → gửi dữ liệu tới webhook `https://spyetsy.supover.com/webhook`.
 - **Yêu cầu**: Chrome đã bật `--remote-debugging-port=9223` và đang mở (cho CDP connection).
 
 ---
 
 ## Endpoints chính
 
-API hiện tại cung cấp các endpoints Etsy Scraping:
+API hiện tại cung cấp các endpoints SpyEtsy:
 
-- **POST `/api/v1/etsy/scrape`**: Crawl Etsy qua CDP connection (yêu cầu Chrome đã chạy với CDP)
-- **POST `/api/v1/etsy/scrape_hidemyacc`**: Crawl Etsy với HideMyAcc profile (tự động launch)
+- **POST `/api/v1/etsy/spy`**: Spy Etsy qua CDP connection (yêu cầu Chrome đã chạy với CDP)
+- **POST `/api/v1/etsy/spy_hidemyacc`**: Spy Etsy với HideMyAcc profile (tự động launch)
 
-Xem `docs/ETSY_SCRAPING_API.md để biết chi tiết về request/response format và cách sử dụng.
+Xem `docs/ETSY_SPY_API.md` để biết chi tiết về request/response format và cách sử dụng.
 
 ---
 
@@ -157,3 +157,33 @@ src/
 ```
 
 Các phần cũ liên quan tới n8n, Amazon search, Docker, test suite cũ... đã được loại bỏ khỏi code chính. Tài liệu chi tiết cho kiến trúc mới nằm trong thư mục `docs/`.
+
+---
+
+## Maintenance & Utilities
+
+### Xóa cache Python
+
+Để xóa tất cả cache Python trong dự án (thư mục `__pycache__`, file `.pyc`, `.pyo`), chạy script:
+
+**macOS/Linux:**
+```bash
+bash scripts/clear_cache.sh
+```
+
+**Windows:**
+```bat
+scripts\clear_cache.bat
+```
+
+Script sẽ xóa tất cả cache trong source code nhưng giữ nguyên cache trong `venv` để không ảnh hưởng đến môi trường ảo.
+
+**Lệnh trực tiếp (nếu không dùng script):**
+```bash
+# Xóa thư mục __pycache__ (trừ venv)
+find . -type d -name "__pycache__" -not -path "./venv/*" -exec rm -rf {} + 2>/dev/null
+
+# Xóa file .pyc và .pyo (trừ venv)
+find . -type f -name "*.pyc" -not -path "./venv/*" -delete 2>/dev/null
+find . -type f -name "*.pyo" -not -path "./venv/*" -delete 2>/dev/null
+```

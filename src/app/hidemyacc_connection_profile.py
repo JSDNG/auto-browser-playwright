@@ -1,11 +1,11 @@
 """
-Module launch Playwright với HideMyAcc profile và scrape Etsy.
+Module launch Playwright với HideMyAcc profile và spy Etsy.
 
 Có 2 hàm chính:
 - launch_hidemyacc_profile_for_api(): Dùng cho API server
 - launch_with_profile(): Dùng cho CLI
 
-Xem docs/ETSY_SCRAPING_API.md để biết chi tiết cách sử dụng.
+Xem docs/ETSY_SPY_API.md để biết chi tiết cách sử dụng.
 """
 import asyncio
 import sys
@@ -88,7 +88,8 @@ async def launch_hidemyacc_profile_for_api(
         
         # Kết nối với Marco browser đang chạy QUA CDP
         # Đây là cách điều khiển QUA CDP (khác với direct launch)
-        automation = PlaywrightAutomation(headless=False)
+        # Tăng timeout lên 60 giây cho mỗi operation để tránh timeout khi xử lý nhiều trang
+        automation = PlaywrightAutomation(headless=False, timeout=60000)
         try:
             cdp_endpoint = f"http://localhost:{cdp_port}"
             print(f"Đang kết nối với Marco browser qua CDP tại {cdp_endpoint}...")
@@ -204,7 +205,7 @@ async def launch_with_profile(
     """
     Launch HideMyAcc profile và thực hiện scraping Etsy - dùng cho CLI.
     
-    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết cách sử dụng.
+    Xem docs/ETSY_SPY_API.md để biết chi tiết cách sử dụng.
     """
     print("=" * 60)
     print("Test Launch Playwright với HideMyAcc Profile")
@@ -328,7 +329,7 @@ async def launch_with_profile(
         # Thực hiện search trên Etsy giống như cdp_connection.py
         search_input = SearchInput(keyword=keyword, pages=pages)
         print("=" * 60)
-        print(f"Bắt đầu crawl Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
+        print(f"Bắt đầu spy Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
         print("=" * 60)
         print()
         
@@ -385,12 +386,12 @@ async def launch_with_profile(
         # Hiển thị kết quả
         print()
         print("=" * 60)
-        print(f"✓ Hoàn thành crawl: {len(all_data)} sản phẩm duy nhất từ {search_input.pages} trang")
+        print(f"✓ Hoàn thành spy: {len(all_data)} sản phẩm duy nhất từ {search_input.pages} trang")
         print("=" * 60)
         print()
         
         if all_data:
-            print("Một số sản phẩm đã crawl:")
+            print("Một số sản phẩm đã spy:")
             for i, (lid, item) in enumerate(list(all_data.items())[:5], 1):
                 print(f"  [{i}] {item.get('title', 'N/A')[:50]}...")
                 print(f"      Listing ID: {lid}")
@@ -440,7 +441,7 @@ async def main():
     """Main function cho CLI - parse arguments và gọi launch_with_profile()."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Test launch Playwright với HideMyAcc profile và crawl Etsy")
+    parser = argparse.ArgumentParser(description="Test launch Playwright với HideMyAcc profile và spy Etsy")
     parser.add_argument("--profile", "-p", help="HideMyAcc profile ID/name")
     parser.add_argument("--no-proxy", action="store_true",
                        help="Tắt proxy (mặc định True khi chạy trực tiếp - không dùng proxy)")
@@ -449,7 +450,7 @@ async def main():
     parser.add_argument("--keyword", "-k", default="t-shirt",
                        help="Từ khóa để search trên Etsy (mặc định: t-shirt)")
     parser.add_argument("--pages", type=int, default=5,
-                       help="Số trang để crawl (mặc định: 5)")
+                       help="Số trang để spy (mặc định: 5)")
     
     args = parser.parse_args()
     

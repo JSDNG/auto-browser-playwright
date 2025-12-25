@@ -1,11 +1,11 @@
-# Hướng dẫn sử dụng Etsy Scraping API
+# Hướng dẫn sử dụng SpyEtsy API
 
 ## Tổng quan
 
-API server cung cấp 2 phương thức để crawl dữ liệu sản phẩm từ Etsy:
+API server cung cấp 2 phương thức để spy dữ liệu sản phẩm từ Etsy:
 
-1. **CDP Connection** (`/api/v1/etsy/scrape`): Kết nối với Chrome đang chạy qua CDP
-2. **HideMyAcc Profile** (`/api/v1/etsy/scrape_hidemyacc`): Tự động launch HideMyAcc profile với Marco browser
+1. **CDP Connection** (`/api/v1/etsy/spy`): Kết nối với Chrome đang chạy qua CDP
+2. **HideMyAcc Profile** (`/api/v1/etsy/spy_hidemyacc`): Tự động launch HideMyAcc profile với Marco browser
 
 ## Yêu cầu hệ thống
 
@@ -68,9 +68,9 @@ Sau khi server chạy, bạn có thể:
 
 ## Endpoint 1: CDP Connection
 
-### POST `/api/v1/etsy/scrape`
+### POST `/api/v1/etsy/spy`
 
-Kết nối với Chrome đang chạy qua CDP để scrape Etsy.
+Kết nối với Chrome đang chạy qua CDP để spy Etsy.
 
 #### Yêu cầu
 
@@ -99,20 +99,25 @@ Truy cập `http://localhost:9223/json` - nếu thấy JSON list các tab, nghĩ
 ```json
 {
     "keyword": "handmade bag",
-    "pages": 5
+    "pages": 5,
+    "config": {
+        "created_date": 2
+    }
 }
 ```
 
 **Parameters:**
 - `keyword` (string, required): Từ khóa tìm kiếm trên Etsy
-- `pages` (integer, required): Số trang cần crawl (từ 1 đến pages)
+- `pages` (integer, required): Số trang cần spy (từ 1 đến pages)
+- `config` (object, optional): Config cho việc lọc dữ liệu
+  - `created_date` (integer, optional): Số tháng để lọc ngày đăng (1-12, mặc định: 2)
 
 #### Response
 
 ```json
 {
     "success": true,
-    "message": "Đã crawl xong 150 sản phẩm từ 5 trang.",
+    "message": "Đã spy xong 150 sản phẩm từ 5 trang.",
     "count": 150,
     "error": null
 }
@@ -121,11 +126,14 @@ Truy cập `http://localhost:9223/json` - nếu thấy JSON list các tab, nghĩ
 #### Ví dụ với curl
 
 ```bash
-curl -X POST "http://localhost:5674/api/v1/etsy/scrape" \
+curl -X POST "http://localhost:5674/api/v1/etsy/spy" \
   -H "Content-Type: application/json" \
   -d '{
     "keyword": "handmade bag",
-    "pages": 2
+    "pages": 2,
+    "config": {
+        "created_date": 3
+    }
   }'
 ```
 
@@ -135,10 +143,13 @@ curl -X POST "http://localhost:5674/api/v1/etsy/scrape" \
 import requests
 
 response = requests.post(
-    "http://localhost:5674/api/v1/etsy/scrape",
+    "http://localhost:5674/api/v1/etsy/spy",
     json={
         "keyword": "handmade bag",
-        "pages": 2
+        "pages": 2,
+        "config": {
+            "created_date": 3
+        }
     },
     timeout=300
 )
@@ -151,9 +162,9 @@ print(f"Message: {result['message']}")
 
 ## Endpoint 2: HideMyAcc Profile
 
-### POST `/api/v1/etsy/scrape_hidemyacc`
+### POST `/api/v1/etsy/spy_hidemyacc`
 
-Tự động launch HideMyAcc profile với Marco browser và scrape Etsy.
+Tự động launch HideMyAcc profile với Marco browser và spy Etsy.
 
 #### Yêu cầu
 
@@ -167,7 +178,10 @@ Tự động launch HideMyAcc profile với Marco browser và scrape Etsy.
 {
     "profile_id": "hma_693f644df34a403926dc3bf6",
     "keyword": "handmade bag",
-    "pages": 5
+    "pages": 5,
+    "config": {
+        "created_date": 2
+    }
 }
 ```
 
@@ -178,6 +192,9 @@ Tự động launch HideMyAcc profile với Marco browser và scrape Etsy.
     "profile_id": "hma_693f644df34a403926dc3bf6",
     "keyword": "handmade bag",
     "pages": 5,
+    "config": {
+        "created_date": 2
+    },
     "proxy_server": "http://proxy.example.com:8080",
     "proxy_username": "user",
     "proxy_password": "pass"
@@ -187,7 +204,9 @@ Tự động launch HideMyAcc profile với Marco browser và scrape Etsy.
 **Parameters:**
 - `profile_id` (string, required): HideMyAcc profile ID (ví dụ: `hma_xxx`)
 - `keyword` (string, required): Từ khóa tìm kiếm trên Etsy
-- `pages` (integer, required): Số trang cần crawl
+- `pages` (integer, required): Số trang cần spy
+- `config` (object, optional): Config cho việc lọc dữ liệu
+  - `created_date` (integer, optional): Số tháng để lọc ngày đăng (1-12, mặc định: 2)
 - `proxy_server` (string, optional): Địa chỉ proxy server (format: `http://host:port`)
 - `proxy_username` (string, optional): Username cho proxy authentication (required nếu có `proxy_server`)
 - `proxy_password` (string, optional): Password cho proxy authentication (required nếu có `proxy_server`)
@@ -199,7 +218,7 @@ Tự động launch HideMyAcc profile với Marco browser và scrape Etsy.
 ```json
 {
     "success": true,
-    "message": "Đã crawl xong 150 sản phẩm từ 5 trang.",
+    "message": "Đã spy xong 150 sản phẩm từ 5 trang.",
     "count": 150,
     "error": null
 }
@@ -208,12 +227,15 @@ Tự động launch HideMyAcc profile với Marco browser và scrape Etsy.
 #### Ví dụ với curl
 
 ```bash
-curl -X POST "http://localhost:5674/api/v1/etsy/scrape_hidemyacc" \
+curl -X POST "http://localhost:5674/api/v1/etsy/spy_hidemyacc" \
   -H "Content-Type: application/json" \
   -d '{
     "profile_id": "hma_693f644df34a403926dc3bf6",
     "keyword": "handmade bag",
-    "pages": 2
+    "pages": 2,
+    "config": {
+        "created_date": 3
+    }
   }'
 ```
 
@@ -223,11 +245,14 @@ curl -X POST "http://localhost:5674/api/v1/etsy/scrape_hidemyacc" \
 import requests
 
 response = requests.post(
-    "http://localhost:5674/api/v1/etsy/scrape_hidemyacc",
+    "http://localhost:5674/api/v1/etsy/spy_hidemyacc",
     json={
         "profile_id": "hma_693f644df34a403926dc3bf6",
         "keyword": "handmade bag",
         "pages": 2,
+        "config": {
+            "created_date": 3
+        },
         "proxy_server": "http://proxy.example.com:8080",
         "proxy_username": "user",
         "proxy_password": "pass"
@@ -250,9 +275,10 @@ print(f"Message: {result['message']}")
 3. Chờ 10 giây để trang tải ổn định (Etsy là SPA)
 4. Extract HTML body (loại bỏ script/style tags)
 5. Parse dữ liệu HeyEtsy từ HTML
-6. Deduplicate theo `listing_id`
-7. Gửi dữ liệu tới webhook: `https://n8n.supover.com/webhook/crawler-etsy`
-8. Detach automation (giữ browser mở)
+6. Lọc sản phẩm theo ngày đăng (nếu có config)
+7. Deduplicate theo `listing_id`
+8. Gửi dữ liệu tới webhook: `https://spyetsy.supover.com/webhook`
+9. Detach automation (giữ browser mở)
 
 ### HideMyAcc Profile Flow
 
@@ -262,8 +288,9 @@ print(f"Message: {result['message']}")
 4. Launch Playwright với profile qua `user-data-dir`
 5. Navigate đến từng trang Etsy search
 6. Extract và parse dữ liệu HeyEtsy
-7. Gửi dữ liệu tới webhook
-8. Detach automation (giữ browser mở)
+7. Lọc sản phẩm theo ngày đăng (nếu có config)
+8. Gửi dữ liệu tới webhook
+9. Detach automation (giữ browser mở)
 
 ## Dữ liệu được gửi tới Webhook
 
@@ -275,16 +302,19 @@ Dữ liệu được gửi dưới dạng JSON array, mỗi item là một sản
         "listing_id": "123456789",
         "title": "Handmade Leather Bag",
         "image": "https://...",
-        "price": "$45.00",
+        "views_24h": 150,
         "sold_24h": 3,
+        "total_views": 5000,
         "total_sold": 150,
+        "favorites": 25,
+        "created": "12/25/2024",
         ...
     },
     ...
 ]
 ```
 
-**Webhook URL:** `https://n8n.supover.com/webhook/crawler-etsy`
+**Webhook URL:** `https://spyetsy.supover.com/webhook`
 
 ## Cấu hình
 
@@ -345,18 +375,21 @@ CONFIG_CDP_PORT = 9223
 - Kiểm tra Etsy có hiển thị kết quả không
 - Có thể cần tăng thời gian chờ (hiện tại 10 giây)
 - Kiểm tra HTML structure có thay đổi không (parser có thể cần update)
+- Kiểm tra config `created_date` có quá nghiêm ngặt không
 
 ## Lưu ý quan trọng
 
-1. **Browser được giữ mở**: Sau khi scrape xong, browser sẽ được giữ mở (detach, không close) để có thể tiếp tục sử dụng hoặc debug.
+1. **Browser được giữ mở**: Sau khi spy xong, browser sẽ được giữ mở (detach, không close) để có thể tiếp tục sử dụng hoặc debug.
 
 2. **Timeout**: Endpoint HideMyAcc cần timeout dài hơn vì phải launch browser (khuyến nghị 600 giây).
 
 3. **Xử lý tuần tự**: Mỗi request xử lý tuần tự, không song song.
 
-4. **Webhook**: Dữ liệu được tự động gửi tới webhook n8n sau khi scrape xong.
+4. **Webhook**: Dữ liệu được tự động gửi tới webhook `https://spyetsy.supover.com/webhook` sau khi spy xong.
 
 5. **Deduplication**: Dữ liệu được deduplicate theo `listing_id` để tránh trùng lặp.
+
+6. **Lọc ngày đăng**: Mặc định chỉ lấy sản phẩm có ngày đăng trong vòng 2 tháng. Có thể tùy chỉnh qua `config.created_date` (1-12 tháng).
 
 ## Sử dụng CLI (không qua API)
 
@@ -379,7 +412,7 @@ python src/app/hidemyacc_connection_profile.py \
 **Options:**
 - `--profile, -p`: HideMyAcc profile ID (bắt buộc nếu có nhiều profiles)
 - `--keyword, -k`: Từ khóa search (mặc định: "t-shirt")
-- `--pages`: Số trang crawl (mặc định: 5)
+- `--pages`: Số trang spy (mặc định: 5)
 - `--with-proxy`: Bật proxy với credentials mặc định
 - `--no-proxy`: Tắt proxy (mặc định khi chạy trực tiếp)
 
@@ -404,7 +437,7 @@ logging.basicConfig(level=logging.DEBUG)
 ### Kiểm tra webhook
 
 Kiểm tra webhook có nhận được dữ liệu không:
-- Xem logs của n8n
+- Xem logs của webhook server tại `https://spyetsy.supover.com`
 - Kiểm tra webhook URL có đúng không
 - Kiểm tra network connection
 
@@ -415,3 +448,4 @@ Nếu gặp vấn đề, kiểm tra:
 2. Browser DevTools Console (F12)
 3. CDP endpoint: `http://localhost:9223/json` (cho CDP connection)
 4. HideMyAcc profiles: `~/.hidemyacc/profiles/`
+

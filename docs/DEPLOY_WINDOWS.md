@@ -11,8 +11,8 @@ Tài liệu này hướng dẫn bạn biến `api_server.py` thành dịch vụ 
   - Lắng nghe trên `0.0.0.0:5674` (xem cuối file):
     - `uvicorn.run(app, host="0.0.0.0", port=5674)`
   - Cung cấp các endpoints:
-    - `/api/v1/etsy/scrape` - Etsy scraping qua CDP
-    - `/api/v1/etsy/scrape_hidemyacc` - Etsy scraping với HideMyAcc profile
+    - `/api/v1/etsy/spy` - SpyEtsy qua CDP
+    - `/api/v1/etsy/spy_hidemyacc` - SpyEtsy với HideMyAcc profile
 - **Chrome**:
   - Phải khởi động với `--remote-debugging-port=9223` (cho CDP connection endpoints).
 - **HideMyAcc** (nếu dùng endpoint HideMyAcc):
@@ -112,9 +112,9 @@ Nếu có lỗi, sửa cho chạy ổn **trước khi** triển khai reverse pro
 ## 4. Khởi động Chrome với CDP (remote debugging)
 
 **Lưu ý:** Chỉ cần thiết nếu bạn sử dụng endpoint:
-- `/api/v1/etsy/scrape` - Etsy scraping qua CDP
+- `/api/v1/etsy/spy` - SpyEtsy qua CDP
 
-**Không cần thiết** nếu chỉ dùng `/api/v1/etsy/scrape_hidemyacc` (HideMyAcc tự động launch browser).
+**Không cần thiết** nếu chỉ dùng `/api/v1/etsy/spy_hidemyacc` (HideMyAcc tự động launch browser).
 
 ### 4.1. Khởi động Chrome với CDP
 
@@ -139,14 +139,14 @@ Gợi ý:
 
 ### 4.2. Cài đặt HideMyAcc (nếu dùng endpoint HideMyAcc)
 
-Nếu bạn sử dụng endpoint `/api/v1/etsy/scrape_hidemyacc`:
+Nếu bạn sử dụng endpoint `/api/v1/etsy/spy_hidemyacc`:
 
 1. Cài đặt HideMyAcc application trên Windows
 2. Tạo profiles trong HideMyAcc
 3. Profiles sẽ được lưu tại: `C:\Users\<username>\.hidemyacc\profiles\`
 4. Marco browser sẽ được tự động tìm trong: `C:\Users\<username>\.hidemyacc\browser\`
 
-Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về HideMyAcc endpoints.
+Xem `docs/ETSY_SPY_API.md` để biết chi tiết về HideMyAcc endpoints.
 
 ---
 
@@ -301,7 +301,7 @@ curl http://localhost/docs
 - **Test Etsy Scraping - CDP Connection:**
 
 ```bash
-POST /api/v1/etsy/scrape
+POST /api/v1/etsy/spy
 {
   "keyword": "handmade bag",
   "pages": 2
@@ -311,7 +311,7 @@ POST /api/v1/etsy/scrape
 - **Test Etsy Scraping - HideMyAcc Profile:**
 
 ```bash
-POST /api/v1/etsy/scrape_hidemyacc
+POST /api/v1/etsy/spy_hidemyacc
 {
   "profile_id": "hma_xxx",
   "keyword": "handmade bag",
@@ -319,7 +319,7 @@ POST /api/v1/etsy/scrape_hidemyacc
 }
 ```
 
-Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về Etsy scraping endpoints.
+Xem `docs/ETSY_SPY_API.md` để biết chi tiết về SpyEtsy endpoints.
 
 ### 8.2. Log & lỗi
 
@@ -350,7 +350,7 @@ Bạn có thể:
 
 - **Nếu lượng request lớn:**
   - Xem xét chạy nhiều instance service trên các port khác nhau rồi load balance.
-  - Hoặc tối ưu logic trong `scrape_etsy_via_cdp` và `scrape_etsy_with_profile`.
+  - Hoặc tối ưu logic trong `spy_etsy_via_cdp` và `spy_etsy_with_profile`.
   - Lưu ý: Mỗi request xử lý tuần tự, không song song.
 
 ---
@@ -381,9 +381,29 @@ Bạn có thể:
    - Truy cập `http(s)://api.yourdomain.com/docs` và test gọi API từ bên ngoài
    - Test các endpoints: USPS tracking, Etsy scraping (CDP và HideMyAcc)
 
-## 9. Tài liệu tham khảo
+## 9. Maintenance & Utilities
 
-- **Etsy Scraping API:** Xem `docs/ETSY_SCRAPING_API.md`
+### Xóa cache Python
+
+Để xóa tất cả cache Python trong dự án (thư mục `__pycache__`, file `.pyc`, `.pyo`):
+
+**Windows:**
+```bat
+scripts\clear_cache.bat
+```
+
+**macOS/Linux:**
+```bash
+bash scripts/clear_cache.sh
+```
+
+Script sẽ xóa tất cả cache trong source code nhưng giữ nguyên cache trong `venv` để không ảnh hưởng đến môi trường ảo.
+
+---
+
+## 10. Tài liệu tham khảo
+
+- **SpyEtsy API:** Xem `docs/ETSY_SPY_API.md`
 - **CDP Connection:** Xem `docs/CDP_CONNECTION.md`
 - **API Guide:** Xem `docs/API_GUIDE.md`
 - **HideMyAcc Quick Start:** Xem `QUICK_START_HIDEMYACC.md`

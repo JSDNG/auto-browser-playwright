@@ -1,11 +1,11 @@
 """
-FastAPI server để crawl dữ liệu Etsy.
+FastAPI server để spy dữ liệu Etsy.
 
 Cung cấp 2 endpoints:
-- /api/v1/etsy/scrape: CDP connection (yêu cầu Chrome đã chạy với CDP)
-- /api/v1/etsy/scrape_hidemyacc: HideMyAcc profile (tự động launch)
+- /api/v1/etsy/spy: CDP connection (yêu cầu Chrome đã chạy với CDP)
+- /api/v1/etsy/spy_hidemyacc: HideMyAcc profile (tự động launch)
 
-Xem docs/ETSY_SCRAPING_API.md để biết chi tiết cách sử dụng.
+Xem docs/ETSY_SPY_API.md để biết chi tiết cách sử dụng.
 """
 # CRITICAL: Set Windows event loop policy FIRST, before any imports
 import sys
@@ -23,18 +23,20 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from typing import Optional
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import logging
 
 from src.utils.hidemyacc import HideMyAccManager
 from src.core.automation import PlaywrightAutomation
 from src.models import SearchInput, HideMyAccSearchInput
-from src.app.cdp_connection import scrape_etsy_via_cdp, _payload_to_json_bytes, _post_json, WEBHOOK_URL
+from src.app.cdp_connection import spy_etsy_via_cdp, _payload_to_json_bytes, _post_json, WEBHOOK_URL, _is_created_within_months
 from src.app.hidemyacc_connection_profile import launch_hidemyacc_profile_for_api
 from src.utils.heyetsy_parser import extract_heyetsy_data
 import re
 import json
+from datetime import datetime, timedelta
 from urllib.parse import quote_plus
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -58,8 +60,8 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="HideMyAcc Automation API",
-    description="API đơn giản để khởi động HideMyAcc profile + Chrome/Marco và kết nối Playwright qua CDP",
+    title="SpyEtsy API",
+    description="API để spy dữ liệu Etsy với HideMyAcc profile + Chrome/Marco và kết nối Playwright qua CDP",
     version="1.0.0",
 )
 
@@ -83,8 +85,8 @@ class HideMyAccConnectionResponse(BaseModel):
 #     pass
 
 
-class EtsyScrapeResponse(BaseModel):
-    """Response cho việc crawl Etsy"""
+class EtsySpyResponse(BaseModel):
+    """Response cho việc spy Etsy"""
 
     success: bool
     message: str
@@ -92,23 +94,26 @@ class EtsyScrapeResponse(BaseModel):
     error: Optional[str] = None
 
 
-async def scrape_etsy_with_profile(
+async def spy_etsy_with_profile(
     keyword: str = "t-shirt",
     pages: int = 5,
     profile_id: str = None,
     proxy_server: str = None,
     proxy_username: str = None,
     proxy_password: str = None,
+    created_date_months: int = 2,
 ):
     """
-    Scrape Etsy với HideMyAcc profile.
+    Spy Etsy với HideMyAcc profile.
     
     Launch profile -> navigate -> extract -> gửi webhook -> detach.
-    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
+    Xem docs/ETSY_SPY_API.md để biết chi tiết.
     """
     search_input = SearchInput(keyword=keyword, pages=pages)
-    logger.info(f"Bắt đầu scrape Etsy với profile: keyword='{search_input.keyword}', pages={search_input.pages}")
+    logger.info(f"Bắt đầu spy Etsy với profile: keyword='{search_input.keyword}', pages={search_input.pages}")
     
+    # Tăng timeout lên 60 giây cho mỗi operation (navigate, evaluate, etc.)
+    # Với 5 trang, mỗi trang ~15-20 giây = ~75-100 giây tổng
     automation = None
     all_data = {}
     
@@ -178,9 +183,14 @@ async def scrape_etsy_with_profile(
                 extracted = extract_heyetsy_data(cleaned_body)
                 
                 # Lọc và deduplicate theo listing_id
-                # Chỉ lấy items có title và image, loại bỏ duplicates
+                # Chỉ lấy items có title và image hợp lệ
+                # Và chỉ lấy items có ngày đăng trong vòng N tháng (theo config)
                 for item in extracted:
                     if not item.get("title") or not item.get("image"):
+                        continue
+                    # Kiểm tra ngày đăng phải trong vòng N tháng
+                    created_date = item.get("created")
+                    if not _is_created_within_months(created_date, created_date_months):
                         continue
                     lid = item.get("listing_id")
                     if lid and lid not in all_data:
@@ -212,11 +222,11 @@ async def scrape_etsy_with_profile(
         return {
             "success": True,
             "count": len(all_data),
-            "message": f"Đã crawl xong {len(all_data)} sản phẩm từ {search_input.pages} trang."
+            "message": f"Đã spy xong {len(all_data)} sản phẩm từ {search_input.pages} trang."
         }
         
     except Exception as e:
-        logger.exception(f"❌ Lỗi trong quá trình scrape: {e}")
+        logger.exception(f"❌ Lỗi trong quá trình spy: {e}")
         if automation:
             try:
                 await automation.detach()
@@ -228,77 +238,84 @@ async def scrape_etsy_with_profile(
         }
 
 
-@api_router.post("/etsy/scrape", response_model=EtsyScrapeResponse)
-async def scrape_etsy(search_input: SearchInput) -> EtsyScrapeResponse:
+@api_router.post("/etsy/spy", response_model=EtsySpyResponse)
+async def spy_etsy(search_input: SearchInput) -> EtsySpyResponse:
     """
-    Crawl Etsy qua CDP Connection.
+    Spy Etsy qua CDP Connection.
     
     Yêu cầu Chrome đã chạy với --remote-debugging-port=9223.
-    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
+    Xem docs/ETSY_SPY_API.md để biết chi tiết.
     """
-    logger.info(f"Nhận yêu cầu scrape Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
+    logger.info(f"Nhận yêu cầu spy Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
 
     try:
-        result = await scrape_etsy_via_cdp(
-            keyword=search_input.keyword, pages=search_input.pages
-        )
-
-        if result.get("success"):
-            return EtsyScrapeResponse(
-                success=True,
-                message=result.get("message", "Crawl thành công"),
-                count=result.get("count", 0),
-            )
-        else:
-            return EtsyScrapeResponse(
-                success=False,
-                message="Crawl thất bại",
-                error=result.get("error"),
-            )
-    except Exception as e:
-        logger.exception(f"Lỗi khi thực hiện scrape Etsy: {e}")
-        return EtsyScrapeResponse(
-            success=False, message="Lỗi server khi thực hiện scrape", error=str(e)
-        )
-
-
-@api_router.post("/etsy/scrape_hidemyacc", response_model=EtsyScrapeResponse)
-async def scrape_etsy_hidemyacc(search_input: HideMyAccSearchInput) -> EtsyScrapeResponse:
-    """
-    Crawl Etsy với HideMyAcc profile - tự động launch và scrape.
-    
-    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết request/response format.
-    """
-    logger.info(f"Nhận yêu cầu scrape Etsy với HideMyAcc: keyword='{search_input.keyword}', pages={search_input.pages}, profile_id={search_input.profile_id}")
-
-    try:
-        # Sử dụng hàm mới với profile
-        result = await scrape_etsy_with_profile(
-            keyword=search_input.keyword,
+        # Lấy số tháng từ config, mặc định là 2
+        created_date_months = search_input.config.created_date if search_input.config else 2
+        result = await spy_etsy_via_cdp(
+            keyword=search_input.keyword, 
             pages=search_input.pages,
-            profile_id=search_input.profile_id,
-            proxy_server=search_input.proxy_server,
-            proxy_username=search_input.proxy_username,
-            proxy_password=search_input.proxy_password
+            created_date_months=created_date_months
         )
 
         if result.get("success"):
-            return EtsyScrapeResponse(
+            return EtsySpyResponse(
                 success=True,
-                message=result.get("message", "Crawl thành công"),
+                message=result.get("message", "Spy thành công"),
                 count=result.get("count", 0),
             )
         else:
-            return EtsyScrapeResponse(
+            return EtsySpyResponse(
                 success=False,
-                message="Crawl thất bại",
+                message="Spy thất bại",
                 error=result.get("error"),
             )
     except Exception as e:
-        logger.exception(f"Lỗi khi thực hiện scrape Etsy với HideMyAcc: {e}")
-        return EtsyScrapeResponse(
-            success=False, message="Lỗi server khi thực hiện scrape", error=str(e)
+        logger.exception(f"Lỗi khi thực hiện spy Etsy: {e}")
+        return EtsySpyResponse(
+            success=False, message="Lỗi server khi thực hiện spy", error=str(e)
         )
+
+
+# @api_router.post("/etsy/spy_hidemyacc", response_model=EtsySpyResponse)
+# async def spy_etsy_hidemyacc(search_input: HideMyAccSearchInput) -> EtsySpyResponse:
+#     """
+#     Spy Etsy với HideMyAcc profile - tự động launch và spy.
+    
+#     Xem docs/ETSY_SPY_API.md để biết chi tiết request/response format.
+#     """
+#     logger.info(f"Nhận yêu cầu spy Etsy với HideMyAcc: keyword='{search_input.keyword}', pages={search_input.pages}, profile_id={search_input.profile_id}")
+
+#     try:
+#         # Lấy số tháng từ config, mặc định là 2
+#         created_date_months = search_input.config.created_date if search_input.config else 2
+#         # Sử dụng hàm mới với profile
+#         result = await spy_etsy_with_profile(
+#             keyword=search_input.keyword,
+#             pages=search_input.pages,
+#             profile_id=search_input.profile_id,
+#             proxy_server=search_input.proxy_server,
+#             proxy_username=search_input.proxy_username,
+#             proxy_password=search_input.proxy_password,
+#             created_date_months=created_date_months
+#         )
+
+#         if result.get("success"):
+#             return EtsySpyResponse(
+#                 success=True,
+#                 message=result.get("message", "Spy thành công"),
+#                 count=result.get("count", 0),
+#             )
+#         else:
+#             return EtsySpyResponse(
+#                 success=False,
+#                 message="Spy thất bại",
+#                 error=result.get("error"),
+#             )
+#     except Exception as e:
+#         logger.exception(f"Lỗi khi thực hiện spy Etsy với HideMyAcc: {e}")
+#         return EtsySpyResponse(
+#             success=False, message="Lỗi server khi thực hiện spy", error=str(e)
+#         )
 
 
 # Include API router vào app
@@ -309,5 +326,13 @@ if __name__ == "__main__":
     import uvicorn
 
     # Dùng cấu hình cố định để tránh phụ thuộc environment
-    uvicorn.run(app, host=CONFIG_API_HOST, port=CONFIG_API_PORT)
+    # Tăng timeout lên 600 giây (10 phút) để xử lý nhiều trang
+    # Với 5 trang, mỗi trang ~15-20 giây = ~75-100 giây, cộng thêm buffer
+    uvicorn.run(
+        app, 
+        host=CONFIG_API_HOST, 
+        port=CONFIG_API_PORT,
+        timeout_keep_alive=600,
+        timeout_graceful_shutdown=30
+    )
 

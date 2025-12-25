@@ -63,7 +63,7 @@ await automation.navigate("https://example.com")
 
 Xem file `src/app/cdp_connection.py` để có ví dụ hoàn chỉnh.
 
-### Ví dụ script HeyEtsy (CLI)
+### Ví dụ script SpyEtsy (CLI)
 
 ```bash
 # keyword mặc định "t-shirt", pages mặc định 5
@@ -75,11 +75,12 @@ python src/app/cdp_connection.py "handmade bag" 5
 2. Duyệt các trang tìm kiếm Etsy (page 1 đến page N)
 3. Extract HTML body (loại bỏ script/style tags)
 4. Trích dữ liệu HeyEtsy bằng `extract_heyetsy_data` từ `src/utils/heyetsy_parser.py`
-5. Lọc và deduplicate theo `listing_id`
-6. Gửi dữ liệu tới webhook: `https://n8n.supover.com/webhook/crawler-etsy`
-7. Detach automation (giữ browser mở)
+5. Lọc sản phẩm theo ngày đăng (nếu có config)
+6. Deduplicate theo `listing_id`
+7. Gửi dữ liệu tới webhook: `https://spyetsy.supover.com/webhook`
+8. Detach automation (giữ browser mở)
 
-**Lưu ý:** Dữ liệu được gửi tới webhook, không lưu file local. Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết.
+**Lưu ý:** Dữ liệu được gửi tới webhook, không lưu file local. Xem `docs/ETSY_SPY_API.md` để biết chi tiết.
 
 ## Troubleshooting
 

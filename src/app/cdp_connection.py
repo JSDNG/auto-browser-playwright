@@ -1,11 +1,11 @@
 """
-Module kết nối Playwright với Chrome đang chạy qua CDP để scrape Etsy.
+Module kết nối Playwright với Chrome đang chạy qua CDP để spy Etsy.
 
 Sử dụng:
 - CLI: python3 src/app/cdp_connection.py [keyword] [pages]
-- API: Import hàm scrape_etsy_via_cdp() trong api_server.py
+- API: Import hàm spy_etsy_via_cdp() trong api_server.py
 
-Xem docs/ETSY_SCRAPING_API.md và docs/CDP_CONNECTION.md để biết chi tiết.
+Xem docs/ETSY_SPY_API.md và docs/CDP_CONNECTION.md để biết chi tiết.
 """
 import asyncio
 import json
@@ -28,15 +28,16 @@ from src.models import SearchInput
 WEBHOOK_URL = "https://n8n.supover.com/webhook/crawler-etsy"
 
 
-def _is_created_within_2_months(created_str: str) -> bool:
+def _is_created_within_months(created_str: str, months: int = 2) -> bool:
     """
-    Kiểm tra xem ngày đăng có trong vòng 2 tháng không.
+    Kiểm tra xem ngày đăng có trong vòng N tháng không.
     
     Args:
         created_str: Chuỗi ngày tháng (có thể là "MM/DD/YYYY" hoặc format khác)
+        months: Số tháng để kiểm tra (mặc định 2)
     
     Returns:
-        True nếu ngày đăng trong vòng 2 tháng, False nếu không hoặc không parse được
+        True nếu ngày đăng trong vòng N tháng, False nếu không hoặc không parse được
     """
     if not created_str:
         return False
@@ -52,11 +53,11 @@ def _is_created_within_2_months(created_str: str) -> bool:
             # Hoặc return False nếu không parse được
             return False
         
-        # Tính ngày 2 tháng trước
-        two_months_ago = datetime.now() - timedelta(days=60)
+        # Tính ngày N tháng trước (dùng 30 ngày/tháng để đơn giản)
+        months_ago = datetime.now() - timedelta(days=months * 30)
         
-        # Kiểm tra xem ngày đăng có sau ngày 2 tháng trước không
-        return created_date >= two_months_ago
+        # Kiểm tra xem ngày đăng có sau ngày N tháng trước không
+        return created_date >= months_ago
     except Exception:
         # Nếu có lỗi khi parse, return False
         return False
@@ -73,23 +74,31 @@ def _post_json(webhook_url: str, payload: bytes):
     # Gửi JSON bytes nhưng Content-Type cần là application/json
     request.add_header("Content-Type", "application/json")
     request.add_header("Content-Length", str(len(payload)))
-    with urlopen(request, timeout=30) as response:
+    # Tăng timeout lên 120 giây để tránh timeout khi gửi nhiều dữ liệu
+    with urlopen(request, timeout=120) as response:
         return response.read()
 
 
-async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
+async def spy_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5, created_date_months: int = 2):
     """
-    Scrape dữ liệu Etsy qua CDP connection.
+    Spy dữ liệu Etsy qua CDP connection.
     
     Yêu cầu Chrome đã chạy với --remote-debugging-port=9223.
-    Xem docs/ETSY_SCRAPING_API.md để biết chi tiết.
+    Xem docs/ETSY_SPY_API.md để biết chi tiết.
+    
+    Args:
+        keyword: Từ khóa tìm kiếm
+        pages: Số trang cần spy
+        created_date_months: Số tháng để lọc ngày đăng (1-12)
     """
     search_input = SearchInput(keyword=keyword, pages=pages)
     print("=" * 60)
-    print(f"Bắt đầu crawl Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
+    print(f"Bắt đầu spy Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
     print("=" * 60)
 
-    automation = PlaywrightAutomation()
+    # Tăng timeout lên 60 giây cho mỗi operation (navigate, evaluate, etc.)
+    # Với 5 trang, mỗi trang ~15-20 giây = ~75-100 giây tổng
+    automation = PlaywrightAutomation(timeout=60000)
     all_data = {}
 
     try:
@@ -139,13 +148,13 @@ async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
                 
                 # Lọc và deduplicate theo listing_id
                 # Chỉ lấy items có title và image hợp lệ
-                # Và chỉ lấy items có ngày đăng trong vòng 2 tháng
+                # Và chỉ lấy items có ngày đăng trong vòng N tháng (theo config)
                 for item in extracted:
                     if not item.get("title") or not item.get("image"):
                         continue
-                    # Kiểm tra ngày đăng phải trong vòng 2 tháng
+                    # Kiểm tra ngày đăng phải trong vòng N tháng
                     created_date = item.get("created")
-                    if not _is_created_within_2_months(created_date):
+                    if not _is_created_within_months(created_date, created_date_months):
                         continue
                     lid = item.get("listing_id")
                     if lid and lid not in all_data:
@@ -171,11 +180,11 @@ async def scrape_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5):
         return {
             "success": True,
             "count": len(all_data),
-            "message": f"Đã crawl xong {len(all_data)} sản phẩm từ {search_input.pages} trang."
+            "message": f"Đã spy xong {len(all_data)} sản phẩm từ {search_input.pages} trang."
         }
 
     except Exception as e:
-        print(f"❌ Lỗi trong quá trình scrape: {e}")
+        print(f"❌ Lỗi trong quá trình spy: {e}")
         return {
             "success": False,
             "error": str(e)
@@ -193,7 +202,7 @@ async def connect_to_chrome_via_cdp():
     except Exception:
         pages_val = 5
 
-    await scrape_etsy_via_cdp(keyword=keyword, pages=pages_val)
+    await spy_etsy_via_cdp(keyword=keyword, pages=pages_val)
 
 
 if __name__ == "__main__":

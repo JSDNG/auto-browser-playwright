@@ -9,11 +9,17 @@ class ViewportConfig(BaseModel):
     height: int = 720
 
 
+class Config(BaseModel):
+    """Config cho việc lọc dữ liệu."""
+    created_date: int = Field(default=2, ge=1, le=12, description="Số tháng để lọc ngày đăng (1-12, ví dụ: 2 = trong vòng 2 tháng)")
+
+
 class SearchInput(BaseModel):
     """Simple search input for Etsy scraping."""
 
     keyword: str = Field(default="t-shirt", min_length=1)
     pages: int = Field(default=5, ge=1, le=20)
+    config: Optional[Config] = Field(default_factory=lambda: Config(created_date=2), description="Config cho việc lọc dữ liệu")
 
     @field_validator("keyword")
     @classmethod
@@ -33,7 +39,8 @@ class HideMyAccSearchInput(BaseModel):
 
     profile_id: str = Field(..., description="HideMyAcc profile ID (bắt buộc)")
     keyword: str = Field(..., min_length=1, description="Từ khóa tìm kiếm (bắt buộc)")
-    pages: int = Field(..., ge=1, le=20, description="Số trang cần crawl (bắt buộc)")
+    pages: int = Field(..., ge=1, le=20, description="Số trang cần spy (bắt buộc)")
+    config: Optional[Config] = Field(default_factory=lambda: Config(created_date=2), description="Config cho việc lọc dữ liệu")
     proxy_server: Optional[str] = Field(default=None, description="Proxy server address (ví dụ: http://149.20.240.190:4444)")
     proxy_username: Optional[str] = Field(default=None, description="Proxy username (bắt buộc nếu có proxy_server)")
     proxy_password: Optional[str] = Field(default=None, description="Proxy password (bắt buộc nếu có proxy_server)")

@@ -2,9 +2,9 @@
 
 ## Tổng quan
 
-API này cung cấp endpoint **Etsy Scraping** (`/api/v1/etsy/scrape`): Crawl dữ liệu sản phẩm từ Etsy qua CDP connection.
+API này cung cấp endpoint **SpyEtsy** (`/api/v1/etsy/spy`): Spy dữ liệu sản phẩm từ Etsy qua CDP connection.
 
-> **Lưu ý**: Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về Etsy scraping endpoints.
+> **Lưu ý**: Xem `docs/ETSY_SPY_API.md` để biết chi tiết về SpyEtsy endpoints.
 
 ## Yêu cầu hệ thống
 - Python 3.11+
@@ -106,10 +106,10 @@ Sau khi server chạy, bạn có thể:
 
 ## Các Endpoints
 
-API hiện tại chỉ cung cấp endpoint **Etsy Scraping**. Xem `docs/ETSY_SCRAPING_API.md` để biết chi tiết về:
+API hiện tại chỉ cung cấp endpoint **SpyEtsy**. Xem `docs/ETSY_SPY_API.md` để biết chi tiết về:
 
-- `/api/v1/etsy/scrape` - Etsy scraping qua CDP connection
-- `/api/v1/etsy/scrape_hidemyacc` - Etsy scraping với HideMyAcc profile
+- `/api/v1/etsy/spy` - SpyEtsy qua CDP connection
+- `/api/v1/etsy/spy_hidemyacc` - SpyEtsy với HideMyAcc profile
 
 ## Xử lý lỗi thường gặp
 
@@ -174,6 +174,22 @@ scripts\stop_chrome_with_cdp.bat
 ```
 
 Hoặc đóng Chrome thủ công.
+
+## Xóa cache Python
+
+Để xóa tất cả cache Python trong dự án (thư mục `__pycache__`, file `.pyc`, `.pyo`):
+
+**macOS/Linux:**
+```bash
+bash scripts/clear_cache.sh
+```
+
+**Windows:**
+```bat
+scripts\clear_cache.bat
+```
+
+Script sẽ xóa tất cả cache trong source code nhưng giữ nguyên cache trong `venv` để không ảnh hưởng đến môi trường ảo.
 
 ## Troubleshooting
 

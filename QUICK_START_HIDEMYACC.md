@@ -237,6 +237,24 @@ python3 src/app/hidemyacc_connection_profile.py --help
 
 ---
 
+## Xóa cache Python
+
+Để xóa tất cả cache Python trong dự án (thư mục `__pycache__`, file `.pyc`, `.pyo`):
+
+**macOS/Linux:**
+```bash
+bash scripts/clear_cache.sh
+```
+
+**Windows:**
+```bat
+scripts\clear_cache.bat
+```
+
+Script sẽ xóa tất cả cache trong source code nhưng giữ nguyên cache trong `venv` để không ảnh hưởng đến môi trường ảo.
+
+---
+
 ## Ví dụ nhanh
 
 ```bash
