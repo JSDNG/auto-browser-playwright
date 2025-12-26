@@ -1,14 +1,17 @@
-from src.models.input import ViewportConfig
+from src.models.input import ViewportConfig, AutomationInput
+from src.core.actions import ActionExecutor
+from src.core.extractor import DataExtractor
 from playwright.async_api import async_playwright
 import asyncio
 import platform
+from typing import Dict, Any, Optional
 
 # Fix Windows event loop issue
 if platform.system() == "Windows":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 class PlaywrightAutomation:
-    def __init__(self, headless: bool = False, timeout: int = 30000, viewport: ViewportConfig = None):
+    def __init__(self, headless: bool = True, timeout: int = 30000, viewport: ViewportConfig = None):
         self.headless = headless
         self.timeout = timeout
         self.viewport = viewport or ViewportConfig()
@@ -18,158 +21,31 @@ class PlaywrightAutomation:
         self.page = None
 
     async def launch(self):
-        """Launch browser using system Chrome"""
+        """Launch browser"""
         self.playwright = await async_playwright().start()
-        # Use system Chrome instead of Playwright's browser
         self.browser = await self.playwright.chromium.launch(
-            channel="chrome",
-            headless=False,
+            headless=self.headless,
             args=[
-            "--disable-blink-features=AutomationControlled", # TẮT CỜ ROBOT (Quan trọng nhất)
-            "--no-sandbox",
-            "--disable-infobars"
-        ])
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+            ] if self.headless else [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+            ]
+        )
         
         self.context = await self.browser.new_context(
             viewport={'width': self.viewport.width, 'height': self.viewport.height}
         )
         self.page = await self.context.new_page()
 
-    async def launch_with_profile(self, user_data_dir: str, executable_path: str = None, channel: str = None, 
-                                   proxy: dict = None, extra_args: list = None, require_executable: bool = False):
-        """
-        Launch browser với user-data-dir (profile) cụ thể
-        
-        Playwright điều khiển browser trực tiếp qua launch_persistent_context (KHÔNG qua CDP).
-        Nếu extra_args có chứa --remote-debugging-port, CDP port sẽ được mở để cho phép kết nối lại
-        sau này, nhưng Playwright vẫn điều khiển trực tiếp, không sử dụng CDP để điều khiển.
-        
-        Args:
-            user_data_dir: Đường dẫn đến user data directory của profile
-            executable_path: Đường dẫn đến browser executable
-            channel: Browser channel (ví dụ: "chrome") - chỉ dùng nếu không có executable_path
-            proxy: Proxy settings dict với keys: server, username (optional), password (optional)
-                   Ví dụ: {"server": "http://proxy:port", "username": "user", "password": "pass"}
-            extra_args: Danh sách args bổ sung (sẽ được thêm vào args mặc định)
-                       Có thể bao gồm --remote-debugging-port để mở CDP port cho kết nối sau này
-            require_executable: Nếu True, bắt buộc phải có executable_path hợp lệ, không cho fallback
-        
-        Lưu ý:
-            - Sử dụng launch_persistent_context để load profile trực tiếp (direct launch)
-            - Profile sẽ được load với tất cả cookies, extensions, settings
-            - Không thể launch nhiều instance cùng lúc với cùng user_data_dir
-            - Ưu tiên executable_path hơn channel
-            - Playwright điều khiển trực tiếp, không qua CDP (ngược với connect_over_cdp)
-        """
-        self.playwright = await async_playwright().start()
-        
-        # Chuẩn bị args
-        # Luôn thêm các args quan trọng cho automation
-        essential_args = [
-            "--disable-blink-features=AutomationControlled",  # TẮT CỜ ROBOT (quan trọng nhất)
-            "--no-sandbox",
-            "--disable-infobars",
-            "--no-first-run",
-            "--no-default-browser-check",
-        ]
-        
-        if extra_args:
-            # Nếu có extra_args, sử dụng chúng (từ command line)
-            # Vẫn giữ essential_args để đảm bảo automation hoạt động
-            browser_args = essential_args + extra_args
-        else:
-            # Args mặc định nếu không có extra_args
-            browser_args = essential_args + [
-                "--lang=en-US",
-                "--disable-encryption",
-                "--restore-last-session",
-                "--disable-features=ExtensionsToolbarMenu,ChromeLabs,ReadLater,TriggerNetworkDataMigration,ChromeWhatsNewUI,ViewportHeightClientHintHeader",
-                "--flag-switches-begin",
-                "--flag-switches-end",
-            ]
-        
-        # Launch với persistent context (user-data-dir)
-        # launch_persistent_context trả về BrowserContext trực tiếp, không phải Browser
-        launch_options = {
-            "user_data_dir": user_data_dir,
-            "headless": self.headless,
-            "viewport": {'width': self.viewport.width, 'height': self.viewport.height},
-            "args": browser_args,
-        }
-        
-        # Thêm proxy nếu có
-        if proxy:
-            # Playwright proxy cần format: {server, username?, password?}
-            proxy_config = {
-                "server": proxy["server"]
-            }
-            # Thêm username/password nếu có (đã được decode từ base64 trong test script)
-            if "username" in proxy and proxy["username"]:
-                proxy_config["username"] = proxy["username"]
-            if "password" in proxy and proxy["password"]:
-                proxy_config["password"] = proxy["password"]
-            launch_options["proxy"] = proxy_config
-            print(f"[DEBUG] Proxy config: server={proxy_config['server']}, has_username={bool(proxy_config.get('username'))}, has_password={bool(proxy_config.get('password'))}")
-        
-        # Ưu tiên executable_path
-        if executable_path:
-            import os
-            # Kiểm tra file có tồn tại không
-            if os.path.exists(executable_path):
-                launch_options["executable_path"] = executable_path
-            else:
-                print(f"⚠️  Warning: Executable path không tồn tại: {executable_path}")
-                print("   Sẽ sử dụng browser mặc định")
-        elif channel:
-            launch_options["channel"] = channel
-        # Nếu không có cả hai, Playwright sẽ dùng browser mặc định
-        # Nếu yêu cầu bắt buộc có executable_path mà lại không set được, raise để tránh fallback Chromium mặc định
-        if require_executable and "executable_path" not in launch_options:
-            raise RuntimeError("Executable path bắt buộc nhưng không tìm thấy. Kiểm tra lại Chrome path.")
-        
-        # Debug: In ra một số thông tin quan trọng
-        print()
-        print("[DEBUG] Launch configuration:")
-        if executable_path and "executable_path" in launch_options:
-            print(f"  ✓ Executable: {launch_options['executable_path']}")
-        else:
-            print(f"  ⚠️  Executable: Not set (using default)")
-        if proxy:
-            print(f"  ✓ Proxy: {proxy['server']}")
-        else:
-            print(f"  ⚠️  Proxy: Not set")
-        print(f"  ✓ User data dir: {user_data_dir}")
-        print(f"  ✓ Browser args: {len(browser_args)} arguments")
-        print()
-        
-        self.context = await self.playwright.chromium.launch_persistent_context(**launch_options)
-        
-        # Verify executable được sử dụng
-        browser_type = self.context.browser
-        if browser_type:
-            print(f"[DEBUG] Actual browser: {browser_type.browser_type.name}")
-            if hasattr(browser_type, 'browser_type') and hasattr(browser_type.browser_type, 'executable_path'):
-                print(f"[DEBUG] Actual executable: {browser_type.browser_type.executable_path}")
-        print()
-        
-        # Lấy page đầu tiên hoặc tạo mới
-        pages = self.context.pages
-        if pages:
-            self.page = pages[0]
-        else:
-            self.page = await self.context.new_page()
-        
-        # Với launch_persistent_context, browser object là None
-        # Context chứa browser instance bên trong
-        self.browser = None  # Không có browser object riêng với persistent context
-
     async def connect_over_cdp(self, cdp_endpoint: str = "http://localhost:9224"):
         """
         Kết nối với Chrome instance đang chạy qua CDP (Chrome DevTools Protocol)
         
-        Khác với launch_with_profile (direct launch), method này kết nối với browser đã được
-        khởi động sẵn thông qua CDP endpoint. Browser phải được launch với --remote-debugging-port
-        để mở CDP port.
+        Method này kết nối với browser đã được khởi động sẵn thông qua CDP endpoint.
+        Browser phải được launch với --remote-debugging-port để mở CDP port.
         
         Args:
             cdp_endpoint: CDP endpoint URL (default: http://localhost:9224)
@@ -179,12 +55,10 @@ class PlaywrightAutomation:
         Yêu cầu:
             Chrome phải được khởi động với flag: --remote-debugging-port=PORT
             Ví dụ: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9224
-            Hoặc: Chrome được launch với --remote-debugging-port trong extra_args
         
         Lưu ý:
-            - Method này điều khiển browser QUA CDP (khác với launch_with_profile điều khiển trực tiếp)
-            - Dùng khi browser đã được launch sẵn (ví dụ: launch trước đó)
-            - Nếu browser chưa chạy, dùng launch_with_profile thay vì method này
+            - Method này điều khiển browser QUA CDP
+            - Dùng khi browser đã được launch sẵn từ bên ngoài
         """
         self.playwright = await async_playwright().start()
         
@@ -224,7 +98,6 @@ class PlaywrightAutomation:
         if self.page:
             await self.page.close()
         if self.context:
-            # Với persistent context, close context sẽ đóng browser
             await self.context.close()
         if self.browser:
             await self.browser.close()
@@ -240,3 +113,76 @@ class PlaywrightAutomation:
         if self.playwright:
             await self.playwright.stop()
         self.playwright = None
+
+    async def run_automation(self, config: AutomationInput, logger=None) -> Dict[str, Any]:
+        """
+        Run complete automation flow based on configuration.
+        
+        Args:
+            config: AutomationInput configuration
+            logger: Optional logger instance
+            
+        Returns:
+            dict with keys: success, url, extracted_data, action_data
+        """
+        log_func = logger.info if logger else print
+        log_error = logger.error if logger else print
+        
+        try:
+            # Initialize action executor and data extractor
+            action_executor = ActionExecutor(self.page)
+            data_extractor = DataExtractor(self.page)
+            
+            # Navigate to URL
+            log_func(f"Navigating to: {config.url}")
+            await self.navigate(config.url)
+            
+            # Wait for initial selector if specified
+            if config.wait_for_selector:
+                log_func(f"Waiting for selector: {config.wait_for_selector}")
+                await self.wait_for_selector(config.wait_for_selector, timeout=config.timeout)
+            
+            # Execute actions
+            if config.actions:
+                log_func(f"Executing {len(config.actions)} actions...")
+                for i, action in enumerate(config.actions, 1):
+                    try:
+                        log_func(f"  [{i}/{len(config.actions)}] Executing {action.type} on {action.selector or 'N/A'}")
+                        await action_executor.execute(action)
+                    except Exception as e:
+                        log_error(f"  Error executing action {i}: {e}")
+                        # Continue with next action instead of failing completely
+                        continue
+            
+            # Extract data
+            extracted_data = {}
+            if config.extract:
+                log_func(f"Extracting {len(config.extract)} data points...")
+                for extract_config in config.extract:
+                    try:
+                        log_func(f"  Extracting: {extract_config.name}")
+                        result = await data_extractor.extract(extract_config)
+                        extracted_data[extract_config.name] = result
+                    except Exception as e:
+                        log_error(f"  Error extracting {extract_config.name}: {e}")
+                        extracted_data[extract_config.name] = None
+            
+            # Get action extracted data (from get_text, get_attribute, etc.)
+            action_data = action_executor.get_extracted_data()
+            
+            return {
+                "success": True,
+                "url": self.page.url,
+                "extracted_data": extracted_data,
+                "action_data": action_data
+            }
+            
+        except Exception as e:
+            log_error(f"Automation failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "url": self.page.url if self.page else None,
+                "extracted_data": {},
+                "action_data": {}
+            }
