@@ -68,15 +68,15 @@ class GrokLaunchResponse(BaseModel):
 @api_router.post("/grok/launch", response_model=GrokLaunchResponse)
 async def launch_grok(grok_input: GrokInput) -> GrokLaunchResponse:
     """
-    Launch Chrome, navigate đến Grok Imagine (https://grok.com/imagine) và nhập prompt để gen video.
+    Launch Chrome, navigate đến Grok Imagine (https://grok.com/imagine) và thực hiện các bước click để gen video.
     
     Sử dụng Chrome trực tiếp. Gọi hàm từ cdp_connection.py để xử lý logic.
     """
-    logger.info(f"Nhận yêu cầu gen video với Grok: prompt='{grok_input.text[:50]}...'")
+    logger.info(f"Nhận yêu cầu gen video với Grok: filename='{grok_input.filename}'")
     
     try:
         # Gọi hàm từ cdp_connection.py để xử lý logic
-        result = await grok_gen_video_direct(text=grok_input.text)
+        result = await grok_gen_video_direct(filename=grok_input.filename)
         
         if result.get("success"):
             return GrokLaunchResponse(

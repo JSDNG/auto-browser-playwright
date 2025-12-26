@@ -12,13 +12,13 @@ class ViewportConfig(BaseModel):
 class GrokInput(BaseModel):
     """Input model for Grok interaction."""
 
-    text: str = Field(default="", min_length=1, description="Text to input into Grok")
+    filename: str = Field(default="", min_length=1, description="Filename to input into Grok")
 
-    @field_validator("text")
+    @field_validator("filename")
     @classmethod
-    def strip_text(cls, v: str):
+    def strip_filename(cls, v: str):
         cleaned = v.strip()
         if not cleaned:
-            raise ValueError("Text cannot be empty")
+            raise ValueError("Filename cannot be empty")
         return cleaned
 
