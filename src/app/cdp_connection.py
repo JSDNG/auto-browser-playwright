@@ -24,6 +24,7 @@ sys.path.insert(0, str(project_root))
 from src.utils.heyetsy_parser import extract_heyetsy_data
 from src.core.automation import PlaywrightAutomation
 from src.models import SearchInput
+from src.utils.chrome_launcher import check_cdp_running
 
 WEBHOOK_URL = "https://n8n.supover.com/webhook/crawler-etsy"
 
@@ -116,13 +117,102 @@ async def spy_etsy_via_cdp(keyword: str = "t-shirt", pages: int = 5, created_dat
                 f"&page={page_num}&ref=pagination"
             )
             print(f"Đang điều hướng đến trang {page_num}: {target_url}")
-            await automation.navigate(target_url)
-            print(f"✓ Trang {page_num} - title: {await automation.page.title()}")
+            
+            # Kiểm tra kết nối trước khi navigate
+            if not await automation.is_connected():
+                print(f"⚠️ Kết nối bị mất trước trang {page_num}.")
+                # Kiểm tra xem CDP có còn chạy không
+                cdp_port = int(cdp_url.split(":")[-1]) if ":" in cdp_url else 9223
+                if not check_cdp_running(cdp_port):
+                    error_msg = f"Chrome đã bị đóng hoàn toàn (CDP không còn chạy tại port {cdp_port}). Vui lòng khởi động lại Chrome với CDP."
+                    print(f"❌ {error_msg}")
+                    return {
+                        "success": False,
+                        "error": error_msg
+                    }
+                
+                print("CDP vẫn đang chạy. Đang thử kết nối lại...")
+                try:
+                    # Thử kết nối lại
+                    await automation.connect_over_cdp(cdp_url)
+                    print("✓ Đã kết nối lại thành công!")
+                except Exception as reconnect_error:
+                    error_msg = f"Không thể kết nối lại với Chrome qua CDP. Lỗi: {reconnect_error}"
+                    print(f"❌ {error_msg}")
+                    return {
+                        "success": False,
+                        "error": error_msg
+                    }
+            
+            try:
+                await automation.navigate(target_url)
+                print(f"✓ Trang {page_num} - title: {await automation.page.title()}")
+            except Exception as nav_error:
+                error_msg = f"Lỗi khi điều hướng đến trang {page_num}: {nav_error}"
+                print(f"❌ {error_msg}")
+                # Nếu lỗi do browser đóng, kiểm tra CDP và thử kết nối lại một lần
+                if "closed" in str(nav_error).lower() or "disconnected" in str(nav_error).lower():
+                    print("⚠️ Browser có vẻ đã bị đóng.")
+                    # Kiểm tra xem CDP có còn chạy không
+                    cdp_port = int(cdp_url.split(":")[-1]) if ":" in cdp_url else 9223
+                    if not check_cdp_running(cdp_port):
+                        error_msg = f"Chrome đã bị đóng hoàn toàn (CDP không còn chạy tại port {cdp_port}). Vui lòng khởi động lại Chrome với CDP."
+                        print(f"❌ {error_msg}")
+                        return {
+                            "success": False,
+                            "error": error_msg
+                        }
+                    
+                    print("CDP vẫn đang chạy. Đang thử kết nối lại...")
+                    try:
+                        await automation.connect_over_cdp(cdp_url)
+                        print("✓ Đã kết nối lại. Thử điều hướng lại...")
+                        await automation.navigate(target_url)
+                        print(f"✓ Trang {page_num} - title: {await automation.page.title()}")
+                    except Exception as retry_error:
+                        error_msg = f"Không thể kết nối lại với Chrome. Lỗi: {retry_error}"
+                        print(f"❌ {error_msg}")
+                        return {
+                            "success": False,
+                            "error": error_msg
+                        }
+                else:
+                    # Lỗi khác, bỏ qua trang này và tiếp tục
+                    print(f"⚠️ Bỏ qua trang {page_num} và tiếp tục...")
+                    continue
 
             # Chờ trang tải ổn định (10 giây)
             # Etsy là SPA (Single Page Application), cần thời gian để render content
             # Có thể cần điều chỉnh thời gian chờ tùy theo tốc độ mạng
             await asyncio.sleep(10)
+
+            # Kiểm tra kết nối lại sau khi chờ (browser có thể đã bị đóng trong lúc chờ)
+            if not await automation.is_connected():
+                print(f"⚠️ Kết nối bị mất sau khi chờ trang {page_num}.")
+                # Kiểm tra xem CDP có còn chạy không
+                cdp_port = int(cdp_url.split(":")[-1]) if ":" in cdp_url else 9223
+                if not check_cdp_running(cdp_port):
+                    error_msg = f"Chrome đã bị đóng hoàn toàn (CDP không còn chạy tại port {cdp_port}). Vui lòng khởi động lại Chrome với CDP."
+                    print(f"❌ {error_msg}")
+                    return {
+                        "success": False,
+                        "error": error_msg
+                    }
+                
+                print("CDP vẫn đang chạy. Đang thử kết nối lại...")
+                try:
+                    await automation.connect_over_cdp(cdp_url)
+                    print("✓ Đã kết nối lại thành công!")
+                    # Cần điều hướng lại vì kết nối mới
+                    await automation.navigate(target_url)
+                    await asyncio.sleep(10)  # Chờ lại sau khi navigate
+                except Exception as reconnect_error:
+                    error_msg = f"Không thể kết nối lại với Chrome. Lỗi: {reconnect_error}"
+                    print(f"❌ {error_msg}")
+                    return {
+                        "success": False,
+                        "error": error_msg
+                    }
 
             print("Đang lấy body và trích xuất dữ liệu...")
             try:

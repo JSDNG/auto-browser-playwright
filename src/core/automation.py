@@ -186,6 +186,13 @@ class PlaywrightAutomation:
             - Dùng khi browser đã được launch sẵn (ví dụ: từ HideMyAcc app hoặc launch trước đó)
             - Nếu browser chưa chạy, dùng launch_with_profile thay vì method này
         """
+        # Dọn dẹp playwright cũ nếu có (khi reconnect)
+        if self.playwright:
+            try:
+                await self.playwright.stop()
+            except Exception:
+                pass
+        
         self.playwright = await async_playwright().start()
         
         # Connect to existing Chrome via CDP
@@ -211,8 +218,25 @@ class PlaywrightAutomation:
             )
             self.page = await self.context.new_page()
 
+    async def is_connected(self) -> bool:
+        """Kiểm tra xem page/browser có còn kết nối không."""
+        try:
+            if not self.page:
+                return False
+            # Kiểm tra page có còn alive không bằng cách check closed state
+            if self.page.is_closed():
+                return False
+            # Thử access một property đơn giản để verify connection
+            _ = self.page.url
+            return True
+        except Exception:
+            return False
+    
     async def navigate(self, url: str):
-        """Navigate to URL"""
+        """Navigate to URL với kiểm tra kết nối trước."""
+        # Kiểm tra kết nối trước khi navigate
+        if not await self.is_connected():
+            raise RuntimeError("Page/browser đã bị đóng. Không thể điều hướng.")
         await self.page.goto(url, timeout=self.timeout, wait_until="domcontentloaded")
 
     async def wait_for_selector(self, selector: str, timeout: int = None):

@@ -1,0 +1,28 @@
+# Etsy Crawler Configuration
+# Copy file này thành config.ini và chỉnh sửa
+
+[search]
+# Từ khóa tìm kiếm trên Etsy
+keyword = handmade bag
+
+# Số trang cần spy (1-20)
+pages = 5
+
+[filter]
+# Số tháng để lọc ngày đăng (1-12)
+# Ví dụ: 2 = chỉ lấy sản phẩm đăng trong vòng 2 tháng gần đây
+created_date_months = 2
+
+[webhook]
+# URL webhook để gửi dữ liệu sau khi spy xong
+url = https://spyetsy.supover.com/webhook
+
+[api]
+# Host và port cho API server
+host = 0.0.0.0
+port = 5674
+
+[cdp]
+# Port cho Chrome CDP connection
+port = 9223
+

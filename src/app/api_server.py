@@ -22,8 +22,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from typing import Optional
-from fastapi import FastAPI, HTTPException, APIRouter, Request
+from typing import Optional, Union
+from fastapi import FastAPI, HTTPException, APIRouter, Request, Body
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import logging
@@ -34,6 +34,7 @@ from src.models import SearchInput, HideMyAccSearchInput
 from src.app.cdp_connection import spy_etsy_via_cdp, _payload_to_json_bytes, _post_json, WEBHOOK_URL, _is_created_within_months
 from src.app.hidemyacc_connection_profile import launch_hidemyacc_profile_for_api
 from src.utils.heyetsy_parser import extract_heyetsy_data
+from src.utils.config_loader import load_config_ini, get_search_config
 import re
 import json
 from datetime import datetime, timedelta
@@ -239,21 +240,36 @@ async def spy_etsy_with_profile(
 
 
 @api_router.post("/etsy/spy", response_model=EtsySpyResponse)
-async def spy_etsy(search_input: SearchInput) -> EtsySpyResponse:
+async def spy_etsy(search_input: Optional[SearchInput] = Body(None)) -> EtsySpyResponse:
     """
     Spy Etsy qua CDP Connection.
     
     Yêu cầu Chrome đã chạy với --remote-debugging-port=9223.
+    
+    Có 2 cách sử dụng:
+    1. Gửi request body với keyword, pages (như cũ)
+    2. Không gửi body hoặc gửi {} → App sẽ đọc từ config.ini
+    
     Xem docs/ETSY_SPY_API.md để biết chi tiết.
     """
-    logger.info(f"Nhận yêu cầu spy Etsy: keyword='{search_input.keyword}', pages={search_input.pages}")
-
     try:
-        # Lấy số tháng từ config, mặc định là 2
-        created_date_months = search_input.config.created_date if search_input.config else 2
+        # Nếu không có search_input, đọc từ config.ini
+        if search_input is None:
+            logger.info("Không có request body, đọc config từ config...")
+            config = get_search_config()
+            keyword = config["keyword"]
+            pages = config["pages"]
+            created_date_months = config["created_date_months"]
+            logger.info(f"Đọc từ config: keyword='{keyword}', pages={pages}, created_date_months={created_date_months}")
+        else:
+            keyword = search_input.keyword
+            pages = search_input.pages
+            created_date_months = search_input.config.created_date if search_input.config else 2
+            logger.info(f"Nhận yêu cầu spy Etsy: keyword='{keyword}', pages={pages}")
+
         result = await spy_etsy_via_cdp(
-            keyword=search_input.keyword, 
-            pages=search_input.pages,
+            keyword=keyword, 
+            pages=pages,
             created_date_months=created_date_months
         )
 

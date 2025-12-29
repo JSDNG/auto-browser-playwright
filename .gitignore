@@ -148,4 +148,7 @@ tmp/
 temp/
 
 # Docker
-*.dockerignore 
+*.dockerignore
+
+# Config files (user-specific)
+config.ini 
