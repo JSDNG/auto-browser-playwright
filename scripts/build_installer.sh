@@ -37,7 +37,7 @@ bash installer/mac/create_dmg.sh
 
 echo ""
 echo "✅ Build hoàn tất!"
-echo "   Executable: dist/EtsyCrawler"
-echo "   DMG: installer/mac/output/EtsyCrawler-*.dmg"
+echo "   Executable: dist/EtsyCrawlerDragonMedia"
+echo "   DMG: installer/mac/output/EtsyCrawlerDragonMedia-*.dmg"
 echo ""
 

@@ -151,4 +151,8 @@ temp/
 *.dockerignore
 
 # Config files (user-specific)
-config.ini 
+config.ini
+
+# Build artifacts (Mac installer)
+installer/mac/output/
+installer/mac/dmg/ 

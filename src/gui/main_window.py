@@ -64,11 +64,18 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.config_path = self._get_config_path()
-        self.spy_thread = None
-        self.init_ui()
-        self.init_tray()
-        self.load_config()
+        try:
+            self.config_path = self._get_config_path()
+            self.spy_thread = None
+            self.init_ui()
+            self.init_tray()
+            self.load_config()
+        except Exception as e:
+            # Nếu có lỗi khi khởi tạo, hiển thị error dialog
+            import traceback
+            error_msg = f"Lỗi khi khởi tạo GUI: {e}\n\n{traceback.format_exc()}"
+            QMessageBox.critical(None, "Lỗi", error_msg)
+            raise
     
     def _get_config_path(self) -> Path:
         """Tìm đường dẫn đến config.ini."""
@@ -168,32 +175,44 @@ class MainWindow(QMainWindow):
     
     def init_tray(self):
         """Khởi tạo system tray icon."""
-        if not QSystemTrayIcon.isSystemTrayAvailable():
-            QMessageBox.critical(None, "System Tray", "System tray không khả dụng trên hệ thống này.")
-            return
-        
-        self.tray_icon = QSystemTrayIcon(self)
-        # TODO: Thêm icon file
-        # self.tray_icon.setIcon(QIcon("icon.png"))
-        
-        tray_menu = QMenu()
-        
-        show_action = QAction("Hiển thị", self)
-        show_action.triggered.connect(self.show)
-        tray_menu.addAction(show_action)
-        
-        quit_action = QAction("Thoát", self)
-        quit_action.triggered.connect(QApplication.quit)
-        tray_menu.addAction(quit_action)
-        
-        self.tray_icon.setContextMenu(tray_menu)
-        self.tray_icon.activated.connect(self.tray_icon_activated)
-        self.tray_icon.show()
+        try:
+            if not QSystemTrayIcon.isSystemTrayAvailable():
+                # Không hiển thị error nếu tray không khả dụng, chỉ skip
+                self.tray_icon = None
+                return
+            
+            self.tray_icon = QSystemTrayIcon(self)
+            # TODO: Thêm icon file
+            # self.tray_icon.setIcon(QIcon("icon.png"))
+            
+            tray_menu = QMenu()
+            
+            show_action = QAction("Hiển thị", self)
+            show_action.triggered.connect(self.show_window)
+            tray_menu.addAction(show_action)
+            
+            quit_action = QAction("Thoát", self)
+            quit_action.triggered.connect(QApplication.quit)
+            tray_menu.addAction(quit_action)
+            
+            self.tray_icon.setContextMenu(tray_menu)
+            self.tray_icon.activated.connect(self.tray_icon_activated)
+            self.tray_icon.show()
+        except Exception as e:
+            # Nếu có lỗi khi khởi tạo tray, không crash app
+            print(f"Warning: Could not initialize system tray: {e}", file=sys.stderr)
+            self.tray_icon = None
     
     def tray_icon_activated(self, reason):
         """Xử lý khi click vào tray icon."""
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
-            self.show()
+            self.show_window()
+    
+    def show_window(self):
+        """Hiển thị và activate window."""
+        self.show()
+        self.raise_()
+        self.activateWindow()
     
     def load_config(self):
         """Đọc config từ config.ini."""
@@ -306,12 +325,14 @@ class MainWindow(QMainWindow):
             count = result.get("count", 0)
             self.status_label.setText(f"✓ Hoàn thành: {count} sản phẩm")
             self.log(f"✓ Spy thành công: {count} sản phẩm")
-            self.tray_icon.showMessage(
-                "Etsy Crawler",
-                f"Spy thành công: {count} sản phẩm",
-                QSystemTrayIcon.MessageIcon.Information,
-                3000
-            )
+            # Chỉ hiển thị notification nếu tray icon khả dụng
+            if self.tray_icon:
+                self.tray_icon.showMessage(
+                    "Etsy Crawler",
+                    f"Spy thành công: {count} sản phẩm",
+                    QSystemTrayIcon.MessageIcon.Information,
+                    3000
+                )
         else:
             error = result.get("error", "Unknown error")
             self.status_label.setText(f"❌ Thất bại: {error}")
@@ -326,7 +347,7 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """Xử lý khi đóng window."""
-        if self.tray_icon.isVisible():
+        if self.tray_icon and self.tray_icon.isVisible():
             QMessageBox.information(
                 self,
                 "Etsy Crawler",
