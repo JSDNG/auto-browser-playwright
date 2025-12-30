@@ -96,6 +96,23 @@ Tất cả cấu hình được thực hiện qua **giao diện GUI**:
 1. Đóng app EtsyCrawler đang chạy (kiểm tra trong system tray)
 2. Hoặc khởi động lại máy nếu app không đóng được
 
+### Lỗi: App mở nhưng không hiển thị giao diện PyQt6
+**Giải pháp:**
+1. Kiểm tra Console.app để xem lỗi chi tiết:
+   - Mở **Console.app** (Applications → Utilities → Console)
+   - Tìm log của `EtsyCrawlerDragonMedia` hoặc `com.etsycrawlerdragonmedia.app`
+2. Chạy app từ Terminal để xem output:
+   ```bash
+   cd /Applications
+   ./EtsyCrawlerDragonMedia.app/Contents/MacOS/EtsyCrawlerDragonMedia
+   ```
+3. Kiểm tra quyền truy cập:
+   - System Settings → Privacy & Security → Accessibility
+   - Đảm bảo app có quyền truy cập (nếu được yêu cầu)
+4. Nếu app chạy từ DMG (read-only):
+   - Copy app vào Applications folder trước khi chạy
+   - Không chạy trực tiếp từ DMG
+
 ## 📞 Hỗ Trợ Nội Bộ
 
 Nếu gặp vấn đề:

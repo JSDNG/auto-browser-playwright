@@ -7,10 +7,36 @@ echo "Debug Etsy Crawler App"
 echo "=========================================="
 echo ""
 
-# Check if app exists
-APP_PATH="dist/EtsyCrawlerDragonMedia"
-if [ ! -f "$APP_PATH" ]; then
-    echo "❌ App không tồn tại: $APP_PATH"
+# Check if app exists (try app bundle first, then executable)
+APP_NAME="EtsyCrawlerDragonMedia"
+APP_BUNDLE_PATH="dist/${APP_NAME}.app"
+APP_EXECUTABLE_PATH="dist/${APP_NAME}"
+
+APP_PATH=""
+if [ -d "$APP_BUNDLE_PATH" ]; then
+    echo "📦 Tìm thấy app bundle: $APP_BUNDLE_PATH"
+    EXECUTABLE_IN_BUNDLE="$APP_BUNDLE_PATH/Contents/MacOS/${APP_NAME}"
+    if [ -f "$EXECUTABLE_IN_BUNDLE" ]; then
+        APP_PATH="$EXECUTABLE_IN_BUNDLE"
+        echo "✅ Tìm thấy executable trong bundle: $APP_PATH"
+    else
+        # Try _APP_NAME (PyInstaller convention)
+        EXECUTABLE_IN_BUNDLE_ALT="$APP_BUNDLE_PATH/Contents/MacOS/_${APP_NAME}"
+        if [ -f "$EXECUTABLE_IN_BUNDLE_ALT" ]; then
+            APP_PATH="$EXECUTABLE_IN_BUNDLE_ALT"
+            echo "✅ Tìm thấy executable trong bundle (alt): $APP_PATH"
+        else
+            echo "❌ Không tìm thấy executable trong bundle"
+            exit 1
+        fi
+    fi
+elif [ -f "$APP_EXECUTABLE_PATH" ]; then
+    APP_PATH="$APP_EXECUTABLE_PATH"
+    echo "📦 Tìm thấy executable: $APP_PATH"
+else
+    echo "❌ Không tìm thấy app tại:"
+    echo "   - $APP_BUNDLE_PATH"
+    echo "   - $APP_EXECUTABLE_PATH"
     exit 1
 fi
 
