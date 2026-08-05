@@ -25,9 +25,14 @@ google-chrome --remote-debugging-port=9222
 chromium --remote-debugging-port=9222
 ```
 
-#### Windows:
-```bash
+#### Windows (Command Prompt):
+```bat
 "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
+```
+
+#### Windows (PowerShell — cần thêm `&` ở đầu, nếu không sẽ báo lỗi `Unexpected token`):
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 ### Bước 2: Xác nhận CDP đang chạy

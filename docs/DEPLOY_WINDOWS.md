@@ -110,10 +110,18 @@ Nếu có lỗi, sửa cho chạy ổn **trước khi** triển khai reverse pro
 
 API `check_delivery_status` yêu cầu Chrome chạy với cờ `--remote-debugging-port=9222`:
 
-Ví dụ trên Windows:
+**Command Prompt (cmd.exe):**
 
-```bash
+```bat
 "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
+```
+
+**PowerShell:** phải thêm toán tử gọi lệnh `&` ở đầu, nếu không sẽ báo lỗi
+`Unexpected token '--remote-debugging-port=9222' ...` (PowerShell coi chuỗi
+trong ngoặc kép là expression, không phải lệnh để chạy):
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 Gợi ý:

@@ -133,9 +133,10 @@ tiết đầy đủ). Tóm tắt nhanh:
 
 1. Cài Python, tạo venv, `pip install -r requirements.txt`.
 2. `copy .env-example .env`, chỉnh nếu cần.
-3. Khởi động Chrome với CDP:
-   `"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"`
-   hoặc `scripts\start_chrome_with_cdp.bat`.
+3. Khởi động Chrome với CDP — dùng `scripts\start_chrome_with_cdp.bat` (chạy
+   được ở cả cmd và PowerShell), hoặc gõ lệnh trực tiếp:
+   - Command Prompt: `"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"`
+   - PowerShell (**bắt buộc thêm `&` ở đầu**, không có sẽ báo lỗi `Unexpected token`): `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"`
 4. Chạy server: `start_auto_check_tracking.bat` (hoặc
    `uvicorn src.app.api_server:app --host 0.0.0.0 --port 5673`).
 5. Test cục bộ trước: `http://127.0.0.1:5673/docs` và gọi thử API bằng

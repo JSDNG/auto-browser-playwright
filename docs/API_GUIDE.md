@@ -53,11 +53,17 @@ chromium --remote-debugging-port=9222
 
 ### Windows
 
+Command Prompt:
 ```cmd
 "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
 ```
 
-Hoặc dùng script tiện ích:
+PowerShell (cần thêm `&` ở đầu, nếu không sẽ báo lỗi `Unexpected token`):
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
+```
+
+Hoặc dùng script tiện ích (chạy được ở cả cmd và PowerShell):
 
 ```cmd
 scripts\start_chrome_with_cdp.bat

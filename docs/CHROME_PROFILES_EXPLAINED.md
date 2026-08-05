@@ -46,9 +46,14 @@ Your history, bookmarks, and everything will be back instantly.
   --remote-debugging-port=9222 \
   --user-data-dir=/tmp/chrome-cdp-profile
 
-# Windows (ví dụ)
+# Windows - Command Prompt (^ để xuống dòng)
 "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
   --remote-debugging-port=9222 ^
+  --user-data-dir="C:\tmp\chrome-cdp-profile"
+
+# Windows - PowerShell (cần & ở đầu; dùng ` để xuống dòng thay vì ^)
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  --remote-debugging-port=9222 `
   --user-data-dir="C:\tmp\chrome-cdp-profile"
 ```
 

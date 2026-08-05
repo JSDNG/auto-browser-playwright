@@ -75,10 +75,17 @@ Chọn một trong các lệnh tương ứng hệ điều hành (có thể tùy 
 google-chrome --remote-debugging-port=9222
 ```
 
-- **Windows** (ví dụ path mặc định):
+- **Windows** (ví dụ path mặc định) — Command Prompt:
 
 ```bat
 "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
+```
+
+  Nếu dùng **PowerShell**, phải thêm `&` ở đầu, nếu không sẽ báo lỗi
+  `Unexpected token '--remote-debugging-port=9222'`:
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"
 ```
 
 Giữ cửa sổ Chrome này mở trong suốt quá trình gọi API.
