@@ -6,15 +6,7 @@ LƯU Ý CONFIG: API_HOST, API_PORT, CDP_ENDPOINT, WAIT_TIME_SECONDS được đ�
 endpoint cho môi trường khác, chỉnh trong `.env` (xem `.env-example`) — không
 cần sửa code.
 """
-# CRITICAL: Set Windows event loop policy FIRST, before any imports
-# This must be done before uvicorn or Playwright create any event loops
 import sys
-import asyncio
-import platform
-
-# Fix Windows event loop issue - MUST be first
-if platform.system() == "Windows":
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from pathlib import Path
 
@@ -25,8 +17,6 @@ sys.path.insert(0, str(project_root))
 from typing import Optional, List, Union
 from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel, Field
-from datetime import datetime
-import re
 import logging
 from src.app.cdp_connection import connect_to_chrome_via_cdp
 from config import API_HOST, API_PORT, CDP_ENDPOINT, WAIT_TIME_SECONDS

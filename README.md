@@ -163,10 +163,10 @@ Các rule validate, logging, và luồng xử lý được mô tả chi tiết t
 
 ## Hỗ trợ chạy trên Windows
 
-- **Event loop cho asyncio**:  
-  Trong `src/app/api_server.py` có đoạn:
-
-  - Nếu hệ điều hành là Windows, cấu hình lại event loop policy để tương thích với Playwright và FastAPI.
+- **Event loop cho asyncio**: không cần cấu hình gì thêm — từ Python 3.8,
+  Windows đã tự mặc định dùng Proactor event loop (tương thích sẵn với
+  Playwright/FastAPI), nên code không cần set tay `WindowsProactorEventLoopPolicy`
+  nữa (set tay bị deprecated và gây warning ở Python bản mới).
 
 - **Setup nhanh**:
   - Chạy `scripts\setup_windows.bat` để tạo venv, cài dependencies và Playwright.
