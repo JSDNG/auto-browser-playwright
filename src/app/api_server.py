@@ -1,14 +1,10 @@
 """
 FastAPI server để gọi CDP connection
 
-LƯU Ý CONFIG (chỉnh trực tiếp trong file này và cdp_connection.py cho dễ deploy Windows):
-- API_HOST: ip/host mà Uvicorn sẽ bind (mặc định: 0.0.0.0 để reverse proxy truy cập được)
-- API_PORT: port local để service / reverse proxy trỏ vào (mặc định: 5673)
-- CDP_ENDPOINT: endpoint CDP của Chrome (mặc định: http://localhost:9222)
-- WAIT_TIME_SECONDS: thời gian chờ sau khi load trang tracking (mặc định: 2s)
-
-Nếu bạn muốn đổi port / CDP endpoint cho môi trường khác, chỉ cần sửa các biến
-CONFIG_* bên dưới, không cần .env cho đỡ rối.
+LƯU Ý CONFIG: API_HOST, API_PORT, CDP_ENDPOINT, WAIT_TIME_SECONDS được đọc từ
+`config.py` (nạp từ file `.env` ở project root). Nếu muốn đổi port / CDP
+endpoint cho môi trường khác, chỉnh trong `.env` (xem `.env-example`) — không
+cần sửa code.
 """
 # CRITICAL: Set Windows event loop policy FIRST, before any imports
 # This must be done before uvicorn or Playwright create any event loops
@@ -33,21 +29,7 @@ from datetime import datetime
 import re
 import logging
 from src.app.cdp_connection import connect_to_chrome_via_cdp
-
-
-# =========================
-# CẤU HÌNH CỐ ĐỊNH (INLINE)
-# =========================
-
-# Host & port cho API (Uvicorn)
-CONFIG_API_HOST = "0.0.0.0"
-CONFIG_API_PORT = 5673
-
-# CDP endpoint cho Chrome (Chrome phải chạy với --remote-debugging-port=9222)
-CONFIG_CDP_ENDPOINT = "http://localhost:9222"
-
-# Thời gian chờ sau khi vào trang tracking (giây)
-CONFIG_WAIT_TIME_SECONDS = 2
+from config import API_HOST, API_PORT, CDP_ENDPOINT, WAIT_TIME_SECONDS
 
 
 # Setup logging (đơn giản, log ra stdout/terminal)
@@ -144,10 +126,9 @@ async def check_delivery_status(shipments: List[ShipmentItem]):
     
     try:
         logger.info(f"Received batch request with {len(shipments)} shipments")
-        
-        # Dùng config cố định từ trên
-        cdp_endpoint = CONFIG_CDP_ENDPOINT
-        wait_time = CONFIG_WAIT_TIME_SECONDS
+
+        cdp_endpoint = CDP_ENDPOINT
+        wait_time = WAIT_TIME_SECONDS
         results = []
         
         # Xử lý từng shipment tuần tự (giữ nguyên thứ tự)
@@ -216,5 +197,4 @@ app.include_router(api_router)
 
 if __name__ == "__main__":
     import uvicorn
-    # Dùng cấu hình cố định để tránh phụ thuộc environment
-    uvicorn.run(app, host=CONFIG_API_HOST, port=CONFIG_API_PORT)
+    uvicorn.run(app, host=API_HOST, port=API_PORT)

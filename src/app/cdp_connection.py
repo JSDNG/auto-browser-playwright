@@ -1,15 +1,10 @@
 r"""
 Kết nối Playwright với Chrome đang chạy qua CDP.
 
-CONFIG ĐƯỢC VIẾT TRỰC TIẾP TRONG FILE (KHÔNG DÙNG .env):
-
-- DEFAULT_TRACKING_URL: URL mẫu để test nhanh CLI.
-- DEFAULT_CDP_ENDPOINT: endpoint CDP của Chrome (mặc định: http://localhost:9222).
-- DEFAULT_WAIT_TIME_SECONDS: thời gian chờ sau khi load trang.
-- DEFAULT_REQUIRED_PHRASES: các cụm text cần có để coi là "delivered".
-
-Nếu deploy ở môi trường khác (Chrome port khác, logic delivered khác),
-chỉ cần sửa các hằng số DEFAULT_* bên dưới.
+CONFIG: DEFAULT_CDP_ENDPOINT, DEFAULT_WAIT_TIME_SECONDS, DEFAULT_REQUIRED_PHRASES
+được đọc từ `config.py` (nạp từ file `.env` ở project root) — sửa trong `.env`
+nếu deploy ở môi trường khác (Chrome port khác, logic delivered khác).
+DEFAULT_TRACKING_URL chỉ dùng để test nhanh CLI, giữ hardcode trong file này.
 
 Hướng dẫn sử dụng CLI test nhanh:
 1. Khởi động Chrome với CDP:
@@ -30,26 +25,15 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.core.automation import PlaywrightAutomation
-
-# =========================
-# CẤU HÌNH CỐ ĐỊNH (INLINE)
-# =========================
+from config import CDP_ENDPOINT, WAIT_TIME_SECONDS, REQUIRED_PHRASES
 
 # URL mặc định để test CLI (không dùng trong API batch)
 DEFAULT_TRACKING_URL = "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9400150105794041827256"
 
-# CDP endpoint mặc định cho Chrome (phải phù hợp với flag --remote-debugging-port)
-DEFAULT_CDP_ENDPOINT = "http://localhost:9222"
-
-# Thời gian chờ sau khi load trang (giây)
-DEFAULT_WAIT_TIME_SECONDS = 2
-
-# Các cụm text cần có trong body để coi như "delivered"
-DEFAULT_REQUIRED_PHRASES = [
-    "Your item was delivered",
-    "Latest Update",
-    "Delivered",
-]
+# Đọc từ .env qua config.py (xem .env-example)
+DEFAULT_CDP_ENDPOINT = CDP_ENDPOINT
+DEFAULT_WAIT_TIME_SECONDS = WAIT_TIME_SECONDS
+DEFAULT_REQUIRED_PHRASES = REQUIRED_PHRASES
 
 
 # Setup logging

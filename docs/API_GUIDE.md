@@ -100,7 +100,6 @@ Sau khi server chạy, bạn có thể:
 
 1. **Truy cập Swagger UI** (tự động): `http://localhost:5673/docs`
 2. **Truy cập ReDoc**: `http://localhost:5673/redoc`
-3. **Health check**: `http://localhost:5673/health`
 
 ## Các Endpoints
 
@@ -146,10 +145,6 @@ curl -X POST "http://localhost:5673/api/v1/cdp/auto-check-tracking" \
         "tracking_link": "https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=9434650105796013858307"
     }
   ]'
-```
-
-```bash
-curl http://localhost:5673/health
 ```
 
 ## Ví dụ sử dụng với Python

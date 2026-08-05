@@ -17,6 +17,18 @@ Chi tiết kiến trúc và luồng xử lý xem thêm trong `docs/implement.md`
 - **Chrome**: Cài Chrome trên máy (dùng system Chrome, không dùng browser đi kèm Playwright).
 - **CDP**: Chrome phải được khởi động với `--remote-debugging-port=9222`.
 
+### Cấu hình (`.env`)
+
+Config đọc từ file `.env` ở project root qua `config.py` (dùng `python-dotenv`). Copy `.env-example` thành `.env` rồi chỉnh nếu cần — nếu không có `.env`, `config.py` tự dùng giá trị mặc định giống hệt trong `.env-example`.
+
+| Biến | Mặc định | Ý nghĩa |
+| --- | --- | --- |
+| `API_HOST` | `0.0.0.0` | Host Uvicorn bind |
+| `API_PORT` | `5673` | Port API |
+| `CDP_ENDPOINT` | `http://localhost:9222` | Endpoint CDP của Chrome |
+| `WAIT_TIME_SECONDS` | `2` | Thời gian chờ sau khi load trang tracking |
+| `REQUIRED_PHRASES` | `Your item was delivered,Latest Update,Delivered` | Các cụm text (phân cách dấu phẩy) cần có để coi là delivered |
+
 ---
 
 ## Cách chạy server
@@ -39,7 +51,15 @@ Script sẽ:
 - Cài dependencies từ `requirements.txt`
 - Cài Playwright Chromium (`python -m playwright install chromium`)
 
-### 2. Khởi động Chrome với CDP
+### 2. (Tùy chọn) Tạo file `.env`
+
+```bash
+cp .env-example .env
+```
+
+Chỉnh các biến trong `.env` nếu cần (port, CDP endpoint, ...) — xem bảng ở mục "Cấu hình" phía trên. Nếu bỏ qua bước này, `config.py` sẽ tự dùng giá trị mặc định.
+
+### 3. Khởi động Chrome với CDP
 
 Chọn một trong các lệnh tương ứng hệ điều hành (có thể tùy chỉnh path nếu Chrome ở vị trí khác):
 
@@ -63,7 +83,7 @@ google-chrome --remote-debugging-port=9222
 
 Giữ cửa sổ Chrome này mở trong suốt quá trình gọi API.
 
-### 3. Chạy FastAPI server (uvicorn)
+### 4. Chạy FastAPI server (uvicorn)
 
 Khuyến nghị dùng `uvicorn` để chạy app (cross‑platform).
 
@@ -152,6 +172,8 @@ Các rule validate, logging, và luồng xử lý được mô tả chi tiết t
 ## Cấu trúc project (rút gọn)
 
 ```text
+config.py                  # Đọc config từ .env (API_HOST, CDP_ENDPOINT, ...)
+.env-example                # Template cho .env
 src/
 ├── app/
 │   ├── __init__.py        # export FastAPI app
@@ -161,10 +183,10 @@ src/
 │   ├── __init__.py        # export PlaywrightAutomation
 │   └── automation.py      # Playwright wrapper: connect_over_cdp, navigate, detach
 ├── models/
-│   ├── __init__.py        # export models dùng nội bộ
-│   └── input.py           # ViewportConfig, AutomationInput, ...
+│   ├── __init__.py        # export ViewportConfig
+│   └── input.py           # ViewportConfig (viewport mặc định cho browser context)
 └── utils/
     └── __init__.py        # (để dành cho future utilities)
 ```
 
-Các phần cũ liên quan tới n8n, Amazon search, Docker, test suite cũ... đã được loại bỏ khỏi code chính. Tài liệu chi tiết cho kiến trúc mới nằm trong thư mục `docs/`.
+Các phần cũ liên quan tới n8n, Amazon search, GUI app (PyQt6/PyInstaller), multi-profile/HideMyAcc, Docker, test suite cũ... đã được loại bỏ khỏi code chính. Tài liệu chi tiết cho kiến trúc mới nằm trong thư mục `docs/`.

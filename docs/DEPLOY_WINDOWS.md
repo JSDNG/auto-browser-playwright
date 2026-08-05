@@ -71,7 +71,10 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
+copy .env-example .env
 ```
+
+Chỉnh `.env` nếu port/CDP endpoint khác mặc định (xem bảng trong `README.md`).
 
 ### 3.2. Chạy API bằng file `start_auto_check_tracking.bat`
 
@@ -307,12 +310,7 @@ Bạn có thể:
 ### 8.3. Tối ưu hiệu suất
 
 - Đảm bảo Chrome chạy ở chế độ tối ưu (bật headless nếu phù hợp, nếu code Playwright/ CDP hỗ trợ).
-- Giảm `wait_time` nếu không cần chờ lâu:
-
-```python
-wait_time = 2
-```
-
+- Giảm `WAIT_TIME_SECONDS` trong `.env` nếu không cần chờ lâu (mặc định `2`, restart server sau khi đổi).
 - Nếu lượng request lớn:
   - Xem xét chạy nhiều instance service trên các port khác nhau rồi load balance.
   - Hoặc tối ưu logic trong `connect_to_chrome_via_cdp`.

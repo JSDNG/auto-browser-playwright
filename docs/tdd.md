@@ -24,14 +24,15 @@ Client (PHP/Python/...) ──▶ FastAPI (`api_server.py`) ──▶ Chrome (CD
 ## 1.2. Project Structure (liên quan tới API này)
 
 ```
+config.py                  # Đọc config (host/port/CDP/wait_time/phrases) từ .env
 src/
 ├── app/
 │   ├── api_server.py      # FastAPI app, định nghĩa endpoint
 │   └── cdp_connection.py  # Hàm connect_to_chrome_via_cdp
 ├── core/
-│   └── automation.py      # PlaywrightAutomation (launch/connect_over_cdp)
+│   └── automation.py      # PlaywrightAutomation (connect_over_cdp)
 └── models/
-    └── input.py           # AutomationInput / ViewportConfig (dùng nội bộ)
+    └── input.py           # ViewportConfig (dùng nội bộ)
 ```
 
 ## 2. User Stories & Test Ideas (rút gọn)

@@ -17,14 +17,17 @@ Client ──▶ FastAPI (`api_server.py`) ──▶ Chrome (CDP) ──▶ USPS
 
 ## 2. Các thành phần chính
 
-- `src/app/api_server.py`: FastAPI app, định nghĩa endpoint `POST /api/v1/cdp/auto-check-tracking`
-- `src/app/cdp_connection.py`: Hàm `connect_to_chrome_via_cdp` dùng Playwright để nói chuyện với Chrome qua CDP
-- `src/core/automation.py`: Lớp `PlaywrightAutomation` với method `connect_over_cdp`
-- `src/models/input.py`: Các Pydantic models dùng nội bộ cho automation (viewport, timeout, ...)
+- `config.py` (root): đọc `API_HOST`, `API_PORT`, `CDP_ENDPOINT`, `WAIT_TIME_SECONDS`, `REQUIRED_PHRASES` từ `.env` (dùng `python-dotenv`), fallback về giá trị mặc định nếu thiếu
+- `src/app/api_server.py`: FastAPI app, định nghĩa endpoint `POST /api/v1/cdp/auto-check-tracking`, dùng config từ `config.py`
+- `src/app/cdp_connection.py`: Hàm `connect_to_chrome_via_cdp` dùng Playwright để nói chuyện với Chrome qua CDP, dùng config từ `config.py`
+- `src/core/automation.py`: Lớp `PlaywrightAutomation` với method `connect_over_cdp` (attach vào Chrome đang chạy sẵn), `navigate`, `wait_for_selector`, `close`, `detach`
+- `src/models/input.py`: `ViewportConfig` — Pydantic model duy nhất còn dùng, cấu hình viewport mặc định cho browser context
 
 ## 3. Project structure (hiện tại)
 
 ```
+config.py                  # Đọc config từ .env
+.env-example                # Template cho .env
 src/
 ├── app/
 │   ├── __init__.py        # export FastAPI app
@@ -32,10 +35,10 @@ src/
 │   └── cdp_connection.py  # CDP helper
 ├── core/
 │   ├── __init__.py        # export PlaywrightAutomation
-│   └── automation.py      # Playwright wrapper
+│   └── automation.py      # Playwright wrapper (connect_over_cdp, navigate, ...)
 ├── models/
-│   ├── __init__.py        # export AutomationInput
-│   └── input.py           # ViewportConfig, AutomationInput, ...
+│   ├── __init__.py        # export ViewportConfig
+│   └── input.py           # ViewportConfig
 └── utils/
     └── __init__.py        # (trống, để dành cho tương lai)
 ```
@@ -79,5 +82,9 @@ Toàn bộ phần cũ liên quan tới:
 - `actions.py`, `extractor.py`
 - `models/output.py` (AutomationOutput, ErrorResponse)
 - n8n workflows, Amazon product search, browser session management
+- Generic automation models (`AutomationInput`, `ActionConfig`, `ExtractConfig`) — không còn dùng, đã xoá (`config.py` root sau đó được viết lại để đọc config CDP/tracking từ `.env`, xem mục 2)
+- `PlaywrightAutomation.launch()` / `launch_with_profile()` (multi-profile, proxy, HideMyAcc/Marco browser) — không còn được gọi trong luồng CDP hiện tại, đã xoá; chỉ giữ `connect_over_cdp()`
+- GUI app (PyQt6) và `build.spec` (PyInstaller) — sản phẩm cũ "EtsyCrawlerDragonMedia", không liên quan tới CDP Tracking API, đã xoá cùng `src/gui/` và artifact `build/`, `dist/`
+- `scripts/test_cli.sh` — test cho CLI cũ (`python -m src.cli`) không còn tồn tại, đã xoá
 
 đã được loại bỏ khỏi code và tài liệu; file này chỉ mô tả kiến trúc và luồng xử lý cho CDP Tracking API hiện tại.
