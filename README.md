@@ -9,7 +9,7 @@ FastAPI server dùng Playwright để kết nối tới Chrome đang chạy sẵ
 - **Output**: Danh sách kết quả dạng JSON:  
   `[{ "shipment_id": "...", "delivered": true|false, "delivered_at": "..." | null }, ...]`.
 
-Chi tiết kiến trúc và luồng xử lý xem thêm trong `docs/implement.md` và `docs/tdd.md`.
+Chi tiết kiến trúc và luồng xử lý xem thêm trong `docs/implement.md` và `docs/tdd.md`. Hướng dẫn test từng bước (Mac → Windows) xem `docs/TESTING_GUIDE.md`.
 
 ### Yêu cầu hệ thống
 
