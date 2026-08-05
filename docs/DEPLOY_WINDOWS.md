@@ -2,7 +2,7 @@
 
 Tài liệu này đi từ **pull code** → **cài môi trường** → **chạy Chrome CDP** →
 **chạy API server local** (`http://127.0.0.1:5673`). Dừng ở bước chạy server —
-phần public qua domain ngoài + Nginx nằm ở file riêng (xem ghi chú cuối bài).
+phần public qua domain ngoài + Nginx nằm ở `docs/DEPLOY_DOMAIN_NGINX.md`.
 
 ---
 
@@ -72,9 +72,16 @@ build sẵn phù hợp). Fix theo thứ tự:
 
 2. **Nếu vẫn lỗi `DLL load failed`** — máy thường thiếu
    **Microsoft Visual C++ Redistributable (x64)**, runtime bắt buộc cho các
-   extension Python biên dịch sẵn trên Windows. Tải bản chính thức từ
-   Microsoft: https://aka.ms/vs/17/release/vc_redist.x64.exe → cài xong,
-   **mở lại terminal mới** rồi thử lại.
+   extension Python biên dịch sẵn trên Windows. Tải + cài trực tiếp bằng
+   PowerShell (bản chính thức từ Microsoft, cài âm thầm không cần bấm Next):
+
+   ```powershell
+   Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "$env:TEMP\vc_redist.x64.exe"
+   Start-Process "$env:TEMP\vc_redist.x64.exe" -ArgumentList "/install", "/quiet", "/norestart" -Wait
+   ```
+
+   Cài xong, **mở lại terminal mới** (activate lại venv) rồi thử `uvicorn`
+   lại.
 
 3. **Nếu vẫn không được** — đổi sang Python bản ổn định hơn (3.12 hoặc 3.13)
    thay vì 3.14:
@@ -160,9 +167,9 @@ uvicorn src.app.api_server:app --host 0.0.0.0 --port 5673
 Thấy dòng `Uvicorn running on http://0.0.0.0:5673` là server đã lên. Giữ
 terminal này mở.
 
-> Cách khác: chạy `start_auto_check_tracking.bat` (tự activate venv tên
-> `venv` và chạy `python src\app\api_server.py`) — chỉ dùng nếu venv của bạn
-> đặt tên đúng là `venv`, không phải `.venv`.
+> Cách khác: chạy `start_auto_check_tracking.bat` — script tự nhận diện
+> venv (ưu tiên `.venv`, fallback `venv` nếu có) rồi chạy
+> `python src\app\api_server.py`.
 
 ### Kiểm tra server sống
 
@@ -183,7 +190,7 @@ Kỳ vọng: JSON trả về `{"shipment_id":"1","delivered":true/false,"deliver
 đồng thời log xử lý hiện ở terminal đang chạy uvicorn.
 
 Đến đây là **API đã chạy local hoàn chỉnh trên Windows**. Phần public qua
-domain ngoài + Nginx sẽ ở tài liệu riêng.
+domain ngoài + Nginx xem tiếp `docs/DEPLOY_DOMAIN_NGINX.md`.
 
 ---
 
@@ -247,6 +254,6 @@ wording thực tế trên trang).
 ## Bước tiếp theo
 
 Sau khi API chạy ổn định local (`http://127.0.0.1:5673/docs` OK, gọi API
-trả kết quả đúng), phần **mở firewall + cấu hình domain ngoài + Nginx
-reverse proxy** sẽ nằm trong tài liệu riêng (xem `docs/` khi tài liệu đó
-được tạo).
+trả kết quả đúng), phần **mở firewall + cấu hình Nginx reverse proxy để
+public qua domain** (SSL đã có sẵn ở Cloudflare) xem tại
+`docs/DEPLOY_DOMAIN_NGINX.md`.

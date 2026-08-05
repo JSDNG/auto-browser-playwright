@@ -160,7 +160,7 @@ tiết đầy đủ). Tóm tắt nhanh:
    chạy `uvicorn` — xem mục Troubleshooting trong `docs/DEPLOY_WINDOWS.md`
    (thường do bản `greenlet` chưa tương thích với Python 3.14).
 7. Sau khi API local OK mới mở firewall / cấu hình domain ngoài + Nginx —
-   xem tài liệu riêng (đang được viết) khi cần public ra ngoài.
+   xem `docs/DEPLOY_DOMAIN_NGINX.md` khi cần public ra ngoài.
 
 > Lưu ý: hành vi bot-protection của USPS có thể khác nhau giữa các máy/IP
 > (Mac dev vs server Windows production). Nếu Mac chạy tốt nhưng Windows bị
