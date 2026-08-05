@@ -156,8 +156,11 @@ tiết đầy đủ). Tóm tắt nhanh:
    `uvicorn src.app.api_server:app --host 0.0.0.0 --port 5673`).
 5. Test cục bộ trước: `http://127.0.0.1:5673/docs` và gọi thử API bằng
    `curl`/Postman — giống hệt Bước 5 ở Phần 1.
-6. Sau khi API local OK mới mở firewall / cấu hình domain ngoài (xem mục 5–6
-   trong `docs/DEPLOY_WINDOWS.md`).
+6. Nếu gặp lỗi `ImportError: DLL load failed while importing _greenlet` khi
+   chạy `uvicorn` — xem mục Troubleshooting trong `docs/DEPLOY_WINDOWS.md`
+   (thường do bản `greenlet` chưa tương thích với Python 3.14).
+7. Sau khi API local OK mới mở firewall / cấu hình domain ngoài + Nginx —
+   xem tài liệu riêng (đang được viết) khi cần public ra ngoài.
 
 > Lưu ý: hành vi bot-protection của USPS có thể khác nhau giữa các máy/IP
 > (Mac dev vs server Windows production). Nếu Mac chạy tốt nhưng Windows bị
