@@ -22,9 +22,17 @@ if not defined CHROME_PATH (
     exit /b 1
 )
 
-start "" "%CHROME_PATH%" --remote-debugging-port=%PORT%
+REM QUAN TRONG: phai dung --user-data-dir rieng, khac voi profile Chrome
+REM binh thuong dang mo. Neu Chrome da chay san (voi profile mac dinh),
+REM Windows se chi mo them 1 tab trong tien trinh do va BO QUA flag
+REM --remote-debugging-port, khien CDP khong bao gio bat len duoc.
+set "CDP_PROFILE_DIR=%TEMP%\chrome-cdp-profile"
 
-echo [OK] Chrome da duoc khoi dong voi CDP
+start "" "%CHROME_PATH%" --remote-debugging-port=%PORT% --user-data-dir="%CDP_PROFILE_DIR%" --no-first-run --no-default-browser-check
+
+echo [OK] Chrome da duoc khoi dong voi CDP (profile rieng: %CDP_PROFILE_DIR%)
 echo.
-echo Kiem tra CDP bang cach truy cap: http://localhost:%PORT%/json
+echo Doi vai giay roi kiem tra CDP bang cach truy cap: http://localhost:%PORT%/json
 echo Hoac chay: curl http://localhost:%PORT%/json
+echo.
+echo Neu van khong ket noi duoc: dong TOAN BO cua so Chrome dang mo roi chay lai script nay.

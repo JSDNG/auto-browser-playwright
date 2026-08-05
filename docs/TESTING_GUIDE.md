@@ -115,9 +115,24 @@ Kiểm tra theo thứ tự:
 3. **Chrome CDP có đang chạy đúng chưa?** `curl http://localhost:9222/json`
    phải trả JSON danh sách tab.
 
-### `Connection refused` khi gọi CDP endpoint
+### `Connection refused` / `Unable to connect to the remote server` khi gọi CDP endpoint
 
-Chrome chưa khởi động xong hoặc chưa bật đúng flag `--remote-debugging-port`.
+Nguyên nhân phổ biến nhất: **Chrome đã đang chạy sẵn** (dù chỉ 1 cửa sổ bình
+thường trước đó). Khi Chrome đã có tiến trình chạy, việc mở lại `chrome.exe`
+kèm `--remote-debugging-port` sẽ chỉ mở thêm 1 tab trong tiến trình cũ và
+**bỏ qua** flag đó — CDP sẽ không bao giờ bật lên dù không báo lỗi gì.
+
+Cách khắc phục:
+1. **Đóng toàn bộ cửa sổ Chrome đang mở** (Task Manager / Activity Monitor
+   → kill hết `chrome.exe` / `Google Chrome`), rồi chạy lại
+   `scripts\start_chrome_with_cdp.bat` (Windows) hoặc
+   `./scripts/start_chrome_with_cdp.sh` (Mac).
+2. Đảm bảo có `--user-data-dir` **khác** với profile Chrome mặc định — script
+   đã tự dùng 1 thư mục profile riêng (`%TEMP%\chrome-cdp-profile` trên
+   Windows, `/tmp/chrome-cdp-profile` trên Mac), để Chrome buộc phải mở
+   tiến trình mới thay vì gộp vào tiến trình đang chạy.
+3. Sau khi chạy script, đợi 3–5 giây rồi mới `curl http://localhost:9222/json`
+   — Chrome cần chút thời gian để khởi động xong.
 
 ### Server lỗi `ModuleNotFoundError`
 
